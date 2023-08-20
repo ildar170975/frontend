@@ -236,6 +236,9 @@ class DialogNewAutomation extends LitElement implements HassDialog {
             --mdc-dialog-min-width: 500px;
           }
         }
+        .mdc-dialog__surface {
+          padding-bottom: var(--ha-dialog-border-radius,28px);
+        }
         ha-icon-next {
           width: 24px;
         }
