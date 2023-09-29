@@ -14,6 +14,7 @@ export const darkStyles = {
   "switch-unchecked-track-color": "#9b9b9b",
   "divider-color": "rgba(225, 225, 225, .12)",
   "mdc-ripple-color": "#AAAAAA",
+  "mdc-linear-progress-buffer-color": "rgba(255, 255, 255, 0.1)",
 
   "input-idle-line-color": "rgba(255, 255, 255, 0.42)",
   "input-hover-line-color": "rgba(255, 255, 255, 0.87)",
@@ -299,6 +300,7 @@ export const haStyleDialog = css`
   ha-dialog {
     --mdc-dialog-min-width: 400px;
     --mdc-dialog-max-width: 600px;
+    --mdc-dialog-max-width: min(600px, 95vw);
     --justify-action-buttons: space-between;
   }
 

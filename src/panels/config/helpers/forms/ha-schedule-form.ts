@@ -112,6 +112,7 @@ class HaScheduleForm extends LitElement {
   }
 
   public disconnectedCallback(): void {
+    super.disconnectedCallback();
     if (this._resizeObserver) {
       this._resizeObserver.disconnect();
     }
@@ -339,6 +340,7 @@ class HaScheduleForm extends LitElement {
     });
 
     if (!isSameDay(start, end)) {
+      this.requestUpdate(`_${day}`);
       info.revert();
     }
   }
@@ -373,6 +375,7 @@ class HaScheduleForm extends LitElement {
     });
 
     if (!isSameDay(start, end)) {
+      this.requestUpdate(`_${day}`);
       info.revert();
     }
   }

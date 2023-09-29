@@ -1,11 +1,18 @@
 import { HassEntity } from "home-assistant-js-websocket";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
+import { styleMap } from "lit/directives/style-map";
+import memoizeOne from "memoize-one";
+import {
+  DEFAULT_MAX_KELVIN,
+  DEFAULT_MIN_KELVIN,
+} from "../../../common/color/convert-light-color";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { stateActive } from "../../../common/entity/state_active";
 import "../../../components/ha-control-slider";
 import { UNAVAILABLE } from "../../../data/entity";
 import { LightColorMode, lightSupportsColorMode } from "../../../data/light";
+import { generateColorTemperatureGradient } from "../../../dialogs/more-info/components/lights/light-color-temp-picker";
 import { HomeAssistant } from "../../../types";
 import { LovelaceTileFeature } from "../types";
 import { LightColorTempTileFeatureConfig } from "./types";
@@ -57,6 +64,13 @@ class HuiLightColorTempTileFeature
         ? this.stateObj.attributes.color_temp_kelvin
         : undefined;
 
+    const minKelvin =
+      this.stateObj.attributes.min_color_temp_kelvin ?? DEFAULT_MIN_KELVIN;
+    const maxKelvin =
+      this.stateObj.attributes.max_color_temp_kelvin ?? DEFAULT_MAX_KELVIN;
+
+    const gradient = this._generateTemperatureGradient(minKelvin!, maxKelvin);
+
     return html`
       <div class="container">
         <ha-control-slider
@@ -66,12 +80,19 @@ class HuiLightColorTempTileFeature
           .disabled=${this.stateObj!.state === UNAVAILABLE}
           @value-changed=${this._valueChanged}
           .label=${this.hass.localize("ui.card.light.color_temperature")}
-          .min=${this.stateObj.attributes.min_color_temp_kelvin!}
-          .max=${this.stateObj.attributes.max_color_temp_kelvin!}
+          .min=${minKelvin}
+          .max=${maxKelvin}
+          style=${styleMap({
+            "--gradient": gradient,
+          })}
         ></ha-control-slider>
       </div>
     `;
   }
+
+  private _generateTemperatureGradient = memoizeOne(
+    (min: number, max: number) => generateColorTemperatureGradient(min, max)
+  );
 
   private _valueChanged(ev: CustomEvent) {
     ev.stopPropagation();
@@ -86,11 +107,10 @@ class HuiLightColorTempTileFeature
   static get styles() {
     return css`
       ha-control-slider {
+        --control-slider-color: var(--tile-color);
         --control-slider-background: -webkit-linear-gradient(
           left,
-          rgb(255, 160, 0) 0%,
-          white 50%,
-          rgb(166, 209, 255) 100%
+          var(--gradient)
         );
         --control-slider-background-opacity: 1;
         --control-slider-thickness: 40px;

@@ -165,6 +165,7 @@ const createWebpackConfig = ({
         "lit/directives/guard$": "lit/directives/guard.js",
         "lit/directives/cache$": "lit/directives/cache.js",
         "lit/directives/repeat$": "lit/directives/repeat.js",
+        "lit/directives/live$": "lit/directives/live.js",
         "lit/polyfill-support$": "lit/polyfill-support.js",
         "@lit-labs/virtualizer/layouts/grid":
           "@lit-labs/virtualizer/layouts/grid.js",
@@ -202,7 +203,10 @@ const createWebpackConfig = ({
                   !existsSync(info.resourcePath) ||
                   info.resourcePath.startsWith("./node_modules")
                 ) {
-                  return new URL(info.resourcePath, "webpack://frontend/").href;
+                  // Source URLs are unknown for dependencies, so we use a relative URL with a
+                  // non - existent top directory.  This results in a clean source tree in browser
+                  // dev tools, and they stay happy getting 404s with valid requests.
+                  return `/unknown${path.resolve("/", info.resourcePath)}`;
                 }
                 return new URL(info.resourcePath, bundle.sourceMapURL()).href;
               }

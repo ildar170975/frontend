@@ -14,6 +14,10 @@ export interface CoverTiltTileFeatureConfig {
   type: "cover-tilt";
 }
 
+export interface CoverTiltPositionTileFeatureConfig {
+  type: "cover-tilt-position";
+}
+
 export interface LightBrightnessTileFeatureConfig {
   type: "light-brightness";
 }
@@ -36,6 +40,20 @@ export interface ClimateHvacModesTileFeatureConfig {
   hvac_modes?: HvacMode[];
 }
 
+export interface ClimatePresetModesTileFeatureConfig {
+  type: "climate-preset-modes";
+  style?: "dropdown" | "icons";
+  preset_modes?: string[];
+}
+
+export interface SelectOptionsTileFeatureConfig {
+  type: "select-options";
+}
+
+export interface TargetTemperatureTileFeatureConfig {
+  type: "target-temperature";
+}
+
 export interface WaterHeaterOperationModesTileFeatureConfig {
   type: "water-heater-operation-modes";
   operation_modes?: OperationMode[];
@@ -56,17 +74,31 @@ export interface VacuumCommandsTileFeatureConfig {
   commands?: VacuumCommand[];
 }
 
+export const LAWN_MOWER_COMMANDS = ["start_pause", "dock"] as const;
+
+export type LawnMowerCommand = (typeof LAWN_MOWER_COMMANDS)[number];
+
+export interface LawnMowerCommandsTileFeatureConfig {
+  type: "lawn-mower-commands";
+  commands?: LawnMowerCommand[];
+}
+
 export type LovelaceTileFeatureConfig =
+  | AlarmModesTileFeatureConfig
+  | ClimateHvacModesTileFeatureConfig
+  | ClimatePresetModesTileFeatureConfig
   | CoverOpenCloseTileFeatureConfig
   | CoverPositionTileFeatureConfig
+  | CoverTiltPositionTileFeatureConfig
   | CoverTiltTileFeatureConfig
+  | FanSpeedTileFeatureConfig
+  | LawnMowerCommandsTileFeatureConfig
   | LightBrightnessTileFeatureConfig
   | LightColorTempTileFeatureConfig
   | VacuumCommandsTileFeatureConfig
-  | FanSpeedTileFeatureConfig
-  | AlarmModesTileFeatureConfig
-  | ClimateHvacModesTileFeatureConfig
-  | WaterHeaterOperationModesTileFeatureConfig;
+  | TargetTemperatureTileFeatureConfig
+  | WaterHeaterOperationModesTileFeatureConfig
+  | SelectOptionsTileFeatureConfig;
 
 export type LovelaceTileFeatureContext = {
   entity_id?: string;
