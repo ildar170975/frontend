@@ -19,11 +19,14 @@ import type {
   HaFormStringData,
   HaFormStringSchema,
 } from "./types";
+import { HomeAssistant } from "../../types";
 
 const MASKED_FIELDS = ["password", "secret", "token"];
 
 @customElement("ha-form-string")
 export class HaFormString extends LitElement implements HaFormElement {
+  @property() public hass!: HomeAssistant;
+
   @property() public schema!: HaFormStringSchema;
 
   @property() public data!: HaFormStringData;
@@ -78,7 +81,11 @@ export class HaFormString extends LitElement implements HaFormElement {
     return html`
       <ha-icon-button
         toggles
-        .label=${`${this.unmaskedPassword ? "Hide" : "Show"} password`}
+        .label=${this.hass.localize(
+          this.unmaskedPassword
+            ? "ui.components.selectors.text.hide_password"
+            : "ui.components.selectors.text.show_password"
+        )}
         @click=${this.toggleUnmaskedPassword}
         .path=${this.unmaskedPassword ? mdiEyeOff : mdiEye}
       ></ha-icon-button>
@@ -138,15 +145,13 @@ export class HaFormString extends LitElement implements HaFormElement {
       }
       ha-icon-button {
         position: absolute;
-        top: 1em;
-        right: 12px;
-        --mdc-icon-button-size: 24px;
-        color: var(--secondary-text-color);
-      }
-
-      ha-icon-button {
+        top: 8px;
+        right: 8px;
         inset-inline-start: initial;
-        inset-inline-end: 12px;
+        inset-inline-end: 8px;
+        --mdc-icon-button-size: 40px;
+        --mdc-icon-size: 20px;
+        color: var(--secondary-text-color);
         direction: var(--direction);
       }
     `;

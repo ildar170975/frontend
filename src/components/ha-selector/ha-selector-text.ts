@@ -76,7 +76,11 @@ export class HaTextSelector extends LitElement {
       ${this.selector.text?.type === "password"
         ? html`<ha-icon-button
             toggles
-            .label=${`${this._unmaskedPassword ? "Hide" : "Show"} password`}
+            .label=${this.hass.localize(
+              this._unmaskedPassword
+                ? "ui.components.selectors.text.hide_password"
+                : "ui.components.selectors.text.show_password"
+            )}
             @click=${this._toggleUnmaskedPassword}
             .path=${this._unmaskedPassword ? mdiEyeOff : mdiEye}
           ></ha-icon-button>`
@@ -111,13 +115,13 @@ export class HaTextSelector extends LitElement {
       }
       ha-icon-button {
         position: absolute;
-        top: 10px;
-        right: 10px;
-        --mdc-icon-button-size: 36px;
+        top: 8px;
+        right: 8px;
+        inset-inline-start: initial;
+        inset-inline-end: 8px;
+        --mdc-icon-button-size: 40px;
         --mdc-icon-size: 20px;
         color: var(--secondary-text-color);
-        inset-inline-start: initial;
-        inset-inline-end: 10px;
         direction: var(--direction);
       }
     `;

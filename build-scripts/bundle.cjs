@@ -12,11 +12,7 @@ module.exports.sourceMapURL = () => {
 };
 
 // Files from NPM Packages that should not be imported
-// eslint-disable-next-line unused-imports/no-unused-vars
-module.exports.ignorePackages = ({ latestBuild }) => [
-  // Part of yaml.js and only used for !!js functions that we don't use
-  require.resolve("esprima"),
-];
+module.exports.ignorePackages = () => [];
 
 // Files from NPM packages that we should replace with empty file
 module.exports.emptyPackages = ({ latestBuild, isHassioBuild }) =>
@@ -98,7 +94,7 @@ module.exports.babelOptions = ({ latestBuild, isProdBuild, isTestBuild }) => ({
       "@babel/preset-env",
       {
         useBuiltIns: latestBuild ? false : "entry",
-        corejs: latestBuild ? false : { version: "3.32", proposals: true },
+        corejs: latestBuild ? false : { version: "3.33", proposals: true },
         bugfixes: true,
         shippedProposals: true,
       },
@@ -149,7 +145,7 @@ module.exports.babelOptions = ({ latestBuild, isProdBuild, isTestBuild }) => ({
   sourceMaps: !isTestBuild,
 });
 
-const nameSuffix = (latestBuild) => (latestBuild ? "-latest" : "-es5");
+const nameSuffix = (latestBuild) => (latestBuild ? "-modern" : "-legacy");
 
 const outputPath = (outputRoot, latestBuild) =>
   path.resolve(outputRoot, latestBuild ? "frontend_latest" : "frontend_es5");
@@ -183,7 +179,7 @@ const publicPath = (latestBuild, root = "") =>
 module.exports.config = {
   app({ isProdBuild, latestBuild, isStatsBuild, isTestBuild, isWDS }) {
     return {
-      name: "app" + nameSuffix(latestBuild),
+      name: "frontend" + nameSuffix(latestBuild),
       entry: {
         service_worker: "./src/entrypoints/service_worker.ts",
         app: "./src/entrypoints/app.ts",
