@@ -12,7 +12,8 @@ import {
   GridSourceTypeEnergyPreference,
 } from "../../../data/energy";
 import { domainToName } from "../../../data/integration";
-import { LovelaceCardConfig, LovelaceViewConfig } from "../../../data/lovelace";
+import { LovelaceCardConfig } from "../../../data/lovelace/config/card";
+import { LovelaceViewConfig } from "../../../data/lovelace/config/view";
 import { computeUserInitials } from "../../../data/user";
 import { HomeAssistant } from "../../../types";
 import { HELPER_DOMAINS } from "../../config/helpers/const";
@@ -140,12 +141,23 @@ export const computeCards = (
       const cardConfig: ThermostatCardConfig = {
         type: "thermostat",
         entity: entityId,
+        features: [
+          {
+            type: "climate-hvac-modes",
+            hvac_modes: states[entityId]?.attributes?.hvac_modes,
+          },
+        ],
       };
       cards.push(cardConfig);
     } else if (domain === "humidifier") {
       const cardConfig: HumidifierCardConfig = {
         type: "humidifier",
         entity: entityId,
+        features: [
+          {
+            type: "humidifier-modes",
+          },
+        ],
       };
       cards.push(cardConfig);
     } else if (domain === "media_player") {
@@ -445,7 +457,12 @@ export const generateDefaultViewConfig = (
   entityEntries: HomeAssistant["entities"],
   entities: HassEntities,
   localize: LocalizeFunc,
-  energyPrefs?: EnergyPreferences
+  energyPrefs?: EnergyPreferences,
+  areasPrefs?: {
+    hidden?: string[];
+  },
+  hideEntitiesWithoutAreas?: boolean,
+  hideEnergy?: boolean
 ): LovelaceViewConfig => {
   const states = computeDefaultViewStates(entities, entityEntries);
   const path = "default_view";
@@ -467,6 +484,17 @@ export const generateDefaultViewConfig = (
     entityEntries,
     states
   );
+
+  if (areasPrefs?.hidden) {
+    for (const area of areasPrefs.hidden) {
+      splittedByAreaDevice.areasWithEntities[area] = [];
+    }
+  }
+
+  if (hideEntitiesWithoutAreas) {
+    splittedByAreaDevice.devicesWithEntities = {};
+    splittedByAreaDevice.otherEntities = {};
+  }
 
   const splittedByGroups = splitByGroups(splittedByAreaDevice.otherEntities);
   splittedByGroups.groups.sort(
@@ -552,7 +580,7 @@ export const generateDefaultViewConfig = (
 
   let energyCard: LovelaceCardConfig | undefined;
 
-  if (energyPrefs) {
+  if (energyPrefs && !hideEnergy) {
     // Distribution card requires the grid to be configured
     const grid = energyPrefs.energy_sources.find(
       (source) => source.type === "grid"

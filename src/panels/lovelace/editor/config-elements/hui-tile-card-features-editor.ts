@@ -24,23 +24,24 @@ import { HomeAssistant } from "../../../../types";
 import { getTileFeatureElementClass } from "../../create-element/create-tile-feature-element";
 import { supportsAlarmModesTileFeature } from "../../tile-features/hui-alarm-modes-tile-feature";
 import { supportsClimateHvacModesTileFeature } from "../../tile-features/hui-climate-hvac-modes-tile-feature";
+import { supportsClimatePresetModesTileFeature } from "../../tile-features/hui-climate-preset-modes-tile-feature";
 import { supportsCoverOpenCloseTileFeature } from "../../tile-features/hui-cover-open-close-tile-feature";
 import { supportsCoverPositionTileFeature } from "../../tile-features/hui-cover-position-tile-feature";
 import { supportsCoverTiltPositionTileFeature } from "../../tile-features/hui-cover-tilt-position-tile-feature";
 import { supportsCoverTiltTileFeature } from "../../tile-features/hui-cover-tilt-tile-feature";
 import { supportsFanSpeedTileFeature } from "../../tile-features/hui-fan-speed-tile-feature";
+import { supportsHumidifierModesTileFeature } from "../../tile-features/hui-humidifier-modes-tile-feature";
 import { supportsLawnMowerCommandTileFeature } from "../../tile-features/hui-lawn-mower-commands-tile-feature";
 import { supportsLightBrightnessTileFeature } from "../../tile-features/hui-light-brightness-tile-feature";
 import { supportsLightColorTempTileFeature } from "../../tile-features/hui-light-color-temp-tile-feature";
+import { supportsNumberTileFeature } from "../../tile-features/hui-number-tile-feature";
 import { supportsSelectOptionTileFeature } from "../../tile-features/hui-select-options-tile-feature";
 import { supportsTargetTemperatureTileFeature } from "../../tile-features/hui-target-temperature-tile-feature";
 import { supportsVacuumCommandTileFeature } from "../../tile-features/hui-vacuum-commands-tile-feature";
 import { supportsWaterHeaterOperationModesTileFeature } from "../../tile-features/hui-water-heater-operation-modes-tile-feature";
 import { LovelaceTileFeatureConfig } from "../../tile-features/types";
-import { supportsClimatePresetModesTileFeature } from "../../tile-features/hui-climate-preset-modes-tile-feature";
-import { supportsNumberTileFeature } from "../../tile-features/hui-number-tile-feature";
 
-type FeatureType = LovelaceTileFeatureConfig["type"];
+export type FeatureType = LovelaceTileFeatureConfig["type"];
 type SupportsFeature = (stateObj: HassEntity) => boolean;
 
 const UI_FEATURE_TYPES = [
@@ -52,6 +53,7 @@ const UI_FEATURE_TYPES = [
   "cover-tilt-position",
   "cover-tilt",
   "fan-speed",
+  "humidifier-modes",
   "lawn-mower-commands",
   "light-brightness",
   "light-color-temp",
@@ -86,14 +88,15 @@ const SUPPORTS_FEATURE_TYPES: Record<
   "cover-tilt-position": supportsCoverTiltPositionTileFeature,
   "cover-tilt": supportsCoverTiltTileFeature,
   "fan-speed": supportsFanSpeedTileFeature,
+  "humidifier-modes": supportsHumidifierModesTileFeature,
   "lawn-mower-commands": supportsLawnMowerCommandTileFeature,
   "light-brightness": supportsLightBrightnessTileFeature,
   "light-color-temp": supportsLightColorTempTileFeature,
+  number: supportsNumberTileFeature,
   "target-temperature": supportsTargetTemperatureTileFeature,
   "vacuum-commands": supportsVacuumCommandTileFeature,
   "water-heater-operation-modes": supportsWaterHeaterOperationModesTileFeature,
   "select-options": supportsSelectOptionTileFeature,
-  number: supportsNumberTileFeature,
 };
 
 const CUSTOM_FEATURE_ENTRIES: Record<
@@ -121,7 +124,11 @@ export class HuiTileCardFeaturesEditor extends LitElement {
   @property({ attribute: false })
   public features?: LovelaceTileFeatureConfig[];
 
-  @property() public label?: string;
+  @property({ attribute: false })
+  public featuresTypes?: FeatureType[];
+
+  @property()
+  public label?: string;
 
   private _featuresKeys = new WeakMap<LovelaceTileFeatureConfig, string>();
 
@@ -186,7 +193,9 @@ export class HuiTileCardFeaturesEditor extends LitElement {
   }
 
   private _getSupportedFeaturesType() {
-    const featuresTypes = UI_FEATURE_TYPES as readonly string[];
+    const featuresTypes = UI_FEATURE_TYPES.filter(
+      (type) => !this.featuresTypes || this.featuresTypes.includes(type)
+    ) as readonly string[];
     const customFeaturesTypes = customTileFeatures.map(
       (feature) => `${CUSTOM_TYPE_PREFIX}${feature.type}`
     );

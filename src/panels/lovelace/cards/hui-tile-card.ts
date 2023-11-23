@@ -36,7 +36,7 @@ import "../../../components/tile/ha-tile-image";
 import "../../../components/tile/ha-tile-info";
 import { cameraUrlWithWidthHeight } from "../../../data/camera";
 import { isUnavailableState } from "../../../data/entity";
-import type { ActionHandlerEvent } from "../../../data/lovelace";
+import type { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import { SENSOR_DEVICE_CLASS_TIMESTAMP } from "../../../data/sensor";
 import { HomeAssistant } from "../../../types";
 import { actionHandler } from "../common/directives/action-handler-directive";
@@ -47,6 +47,7 @@ import "../tile-features/hui-tile-features";
 import type { LovelaceCard, LovelaceCardEditor } from "../types";
 import { computeTileBadge } from "./tile/badges/tile-badge";
 import type { ThermostatCardConfig, TileCardConfig } from "./types";
+import { UpdateEntity, computeUpdateStateDisplay } from "../../../data/update";
 
 const TIMESTAMP_STATE_DOMAINS = ["button", "input_button", "scene"];
 
@@ -260,6 +261,13 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
       ]);
     }
 
+    if (domain === "update") {
+      return html`${computeUpdateStateDisplay(
+        stateObj as UpdateEntity,
+        this.hass!
+      )}`;
+    }
+
     return this._renderStateContent(stateObj, "state");
   }
 
@@ -332,8 +340,8 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
     const localizedState = this._config.hide_state
       ? nothing
       : this._config.state_content
-      ? this._renderStateContent(stateObj, this._config.state_content)
-      : this._renderState(stateObj);
+        ? this._renderStateContent(stateObj, this._config.state_content)
+        : this._renderState(stateObj);
 
     const active = stateActive(stateObj);
     const color = this._computeStateColor(stateObj, this._config.color);
@@ -460,6 +468,7 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         bottom: 0;
         right: 0;
         border-radius: var(--ha-card-border-radius, 12px);
+        inset: calc(-1 * var(--ha-card-border-width, 1px));
         overflow: hidden;
       }
       .content {
