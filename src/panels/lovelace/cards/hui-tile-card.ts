@@ -42,8 +42,9 @@ import { HomeAssistant } from "../../../types";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { findEntities } from "../common/find-entities";
 import { handleAction } from "../common/handle-action";
+import { hasAction } from "../common/has-action";
 import "../components/hui-timestamp-display";
-import "../tile-features/hui-tile-features";
+import "../card-features/hui-card-features";
 import type { LovelaceCard, LovelaceCardEditor } from "../types";
 import { computeTileBadge } from "./tile/badges/tile-badge";
 import type { ThermostatCardConfig, TileCardConfig } from "./types";
@@ -362,7 +363,10 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
           <div
             class="background"
             @action=${this._handleAction}
-            .actionHandler=${actionHandler()}
+            .actionHandler=${actionHandler({
+              hasHold: hasAction(this._config!.hold_action),
+              hasDoubleClick: hasAction(this._config!.double_tap_action),
+            })}
             role="button"
             tabindex="0"
             aria-labelledby="info"
@@ -423,12 +427,12 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
             ></ha-tile-info>
           </div>
         </div>
-        <hui-tile-features
+        <hui-card-features
           .hass=${this.hass}
           .stateObj=${stateObj}
           .color=${this._config.color}
           .features=${this._config.features}
-        ></hui-tile-features>
+        ></hui-card-features>
       </ha-card>
     `;
   }
@@ -523,8 +527,8 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         box-sizing: border-box;
         pointer-events: none;
       }
-      .features {
-        position: relative;
+      hui-card-features {
+        --feature-color: var(--tile-color);
       }
 
       ha-tile-icon[data-domain="alarm_control_panel"][data-state="pending"],

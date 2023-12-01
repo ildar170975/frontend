@@ -7,6 +7,7 @@ import { splitByGroups } from "../../../common/entity/split_by_groups";
 import { stripPrefixFromEntityName } from "../../../common/entity/strip_prefix_from_entity_name";
 import { stringCompare } from "../../../common/string/compare";
 import { LocalizeFunc } from "../../../common/translations/localize";
+import type { AreaFilterValue } from "../../../components/ha-area-filter";
 import {
   EnergyPreferences,
   GridSourceTypeEnergyPreference,
@@ -27,6 +28,7 @@ import {
 } from "../cards/types";
 import { EntityConfig } from "../entity-rows/types";
 import { ButtonsHeaderFooterConfig } from "../header-footer/types";
+import { areaCompare } from "../../../data/area_registry";
 
 const HIDE_DOMAIN = new Set([
   "automation",
@@ -141,23 +143,12 @@ export const computeCards = (
       const cardConfig: ThermostatCardConfig = {
         type: "thermostat",
         entity: entityId,
-        features: [
-          {
-            type: "climate-hvac-modes",
-            hvac_modes: states[entityId]?.attributes?.hvac_modes,
-          },
-        ],
       };
       cards.push(cardConfig);
     } else if (domain === "humidifier") {
       const cardConfig: HumidifierCardConfig = {
         type: "humidifier",
         entity: entityId,
-        features: [
-          {
-            type: "humidifier-modes",
-          },
-        ],
       };
       cards.push(cardConfig);
     } else if (domain === "media_player") {
@@ -458,9 +449,7 @@ export const generateDefaultViewConfig = (
   entities: HassEntities,
   localize: LocalizeFunc,
   energyPrefs?: EnergyPreferences,
-  areasPrefs?: {
-    hidden?: string[];
-  },
+  areasPrefs?: AreaFilterValue,
   hideEntitiesWithoutAreas?: boolean,
   hideEnergy?: boolean
 ): LovelaceViewConfig => {
@@ -487,7 +476,7 @@ export const generateDefaultViewConfig = (
 
   if (areasPrefs?.hidden) {
     for (const area of areasPrefs.hidden) {
-      splittedByAreaDevice.areasWithEntities[area] = [];
+      delete splittedByAreaDevice.areasWithEntities[area];
     }
   }
 
@@ -522,15 +511,12 @@ export const generateDefaultViewConfig = (
 
   const areaCards: LovelaceCardConfig[] = [];
 
-  const sortedAreas = Object.entries(
-    splittedByAreaDevice.areasWithEntities
-  ).sort((a, b) => {
-    const areaA = areaEntries[a[0]];
-    const areaB = areaEntries[b[0]];
-    return stringCompare(areaA.name, areaB.name);
-  });
+  const sortedAreas = Object.keys(splittedByAreaDevice.areasWithEntities).sort(
+    areaCompare(areaEntries, areasPrefs?.order)
+  );
 
-  for (const [areaId, areaEntities] of sortedAreas) {
+  for (const areaId of sortedAreas) {
+    const areaEntities = splittedByAreaDevice.areasWithEntities[areaId];
     const area = areaEntries[areaId];
     areaCards.push(
       ...computeCards(
@@ -566,13 +552,11 @@ export const generateDefaultViewConfig = (
           title:
             device.name_by_user ||
             device.name ||
-            localize(
-              "ui.panel.config.devices.unnamed_device",
-              "type",
-              localize(
+            localize("ui.panel.config.devices.unnamed_device", {
+              type: localize(
                 `ui.panel.config.devices.type.${device.entry_type || "device"}`
-              )
-            ),
+              ),
+            }),
         }
       )
     );
