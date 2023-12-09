@@ -193,10 +193,7 @@ class HaPanelHistory extends SubscribeMixin(LitElement) {
           </div>
           ${this._isLoading
             ? html`<div class="progress-wrapper">
-                <ha-circular-progress
-                  active
-                  alt=${this.hass.localize("ui.common.loading")}
-                ></ha-circular-progress>
+                <ha-circular-progress indeterminate></ha-circular-progress>
               </div>`
             : !this._targetPickerValue
               ? html`<div class="start-search">
@@ -224,17 +221,19 @@ class HaPanelHistory extends SubscribeMixin(LitElement) {
 
     const keys = new Set(
       historyResult.line
-        .map((i) => computeGroupKey(i.unit, i.device_class))
+        .map((i) => computeGroupKey(i.unit, i.device_class, true))
         .concat(
-          ltsResult.line.map((i) => computeGroupKey(i.unit, i.device_class))
+          ltsResult.line.map((i) =>
+            computeGroupKey(i.unit, i.device_class, true)
+          )
         )
     );
     keys.forEach((key) => {
       const historyItem = historyResult.line.find(
-        (i) => computeGroupKey(i.unit, i.device_class) === key
+        (i) => computeGroupKey(i.unit, i.device_class, true) === key
       );
       const ltsItem = ltsResult.line.find(
-        (i) => computeGroupKey(i.unit, i.device_class) === key
+        (i) => computeGroupKey(i.unit, i.device_class, true) === key
       );
       if (historyItem && ltsItem) {
         const newLineItem: LineChartUnit = { ...historyItem, data: [] };
@@ -410,7 +409,8 @@ class HaPanelHistory extends SubscribeMixin(LitElement) {
         this.hass,
         statsHistoryStates,
         this.hass.localize,
-        sensorNumericDeviceClasses
+        sensorNumericDeviceClasses,
+        true
       );
       // remap states array to statistics array
       (this._statisticsHistory?.line || []).forEach((item) => {
@@ -460,7 +460,8 @@ class HaPanelHistory extends SubscribeMixin(LitElement) {
           this.hass,
           history,
           this.hass.localize,
-          sensorNumericDeviceClasses
+          sensorNumericDeviceClasses,
+          true
         );
       },
       this._startDate,

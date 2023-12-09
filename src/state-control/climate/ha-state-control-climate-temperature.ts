@@ -22,7 +22,10 @@ import {
 } from "../../data/climate";
 import { UNAVAILABLE } from "../../data/entity";
 import { HomeAssistant } from "../../types";
-import { stateControlCircularSliderStyle } from "../state-control-circular-slider-style";
+import {
+  createStateControlCircularSliderController,
+  stateControlCircularSliderStyle,
+} from "../state-control-circular-slider-style";
 
 type Target = "value" | "low" | "high";
 
@@ -45,9 +48,14 @@ export class HaStateControlClimateTemperature extends LitElement {
   @property({ attribute: "show-current", type: Boolean })
   public showCurrent?: boolean;
 
+  @property({ type: Boolean, attribute: "prevent-interaction-on-scroll" })
+  public preventInteractionOnScroll?: boolean;
+
   @state() private _targetTemperature: Partial<Record<Target, number>> = {};
 
   @state() private _selectTargetTemperature: Target = "low";
+
+  private _sizeController = createStateControlCircularSliderController(this);
 
   protected willUpdate(changedProp: PropertyValues): void {
     super.willUpdate(changedProp);
@@ -156,14 +164,17 @@ export class HaStateControlClimateTemperature extends LitElement {
     }
 
     if (
-      !supportsFeature(
+      (!supportsFeature(
         this.stateObj,
         ClimateEntityFeature.TARGET_TEMPERATURE
-      ) &&
-      !supportsFeature(
+      ) ||
+        this._targetTemperature.value === null) &&
+      (!supportsFeature(
         this.stateObj,
         ClimateEntityFeature.TARGET_TEMPERATURE_RANGE
-      )
+      ) ||
+        this._targetTemperature.low === null ||
+        this._targetTemperature.high === null)
     ) {
       return html`
         <p class="label">${this.hass.formatEntityState(this.stateObj)}</p>
@@ -285,6 +296,10 @@ export class HaStateControlClimateTemperature extends LitElement {
       );
     }
 
+    const containerSizeClass = this._sizeController.value
+      ? ` ${this._sizeController.value}`
+      : "";
+
     if (
       supportsTargetTemperature &&
       this._targetTemperature.value != null &&
@@ -302,13 +317,14 @@ export class HaStateControlClimateTemperature extends LitElement {
 
       return html`
         <div
-          class="container"
+          class="container${containerSizeClass}"
           style=${styleMap({
             "--state-color": stateColor,
             "--action-color": actionColor,
           })}
         >
           <ha-control-circular-slider
+            .preventInteractionOnScroll=${this.preventInteractionOnScroll}
             .inactive=${!active}
             .mode=${sliderMode}
             .value=${this._targetTemperature.value}
@@ -340,7 +356,7 @@ export class HaStateControlClimateTemperature extends LitElement {
     ) {
       return html`
         <div
-          class="container"
+          class="container${containerSizeClass}"
           style=${styleMap({
             "--low-color": lowColor,
             "--high-color": highColor,
@@ -348,6 +364,7 @@ export class HaStateControlClimateTemperature extends LitElement {
           })}
         >
           <ha-control-circular-slider
+            .preventInteractionOnScroll=${this.preventInteractionOnScroll}
             .inactive=${!active}
             dual
             .low=${this._targetTemperature.low}
@@ -395,12 +412,15 @@ export class HaStateControlClimateTemperature extends LitElement {
 
     return html`
       <div
-        class="container"
+        class="container${classMap({
+          [this._sizeController.value ?? ""]: true,
+        })}"
         style=${styleMap({
           "--state-color": stateColor,
         })}
       >
         <ha-control-circular-slider
+          .preventInteractionOnScroll=${this.preventInteractionOnScroll}
           mode="full"
           .current=${this.stateObj.attributes.current_temperature}
           .min=${this._min}
@@ -450,15 +470,12 @@ export class HaStateControlClimateTemperature extends LitElement {
         .dual button.selected {
           opacity: 1;
         }
-        @container container (max-width: 250px) {
-          .dual {
-            gap: 16px;
-          }
+        .container.md .dual {
+          gap: 16px;
         }
-        @container container (max-width: 190px) {
-          .dual {
-            gap: 8px;
-          }
+        .container.sm .dual,
+        .container.xs .dual {
+          gap: 8px;
         }
         ha-control-circular-slider {
           --control-circular-slider-low-color: var(

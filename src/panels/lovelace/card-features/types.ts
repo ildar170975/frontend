@@ -37,6 +37,7 @@ export interface AlarmModesCardFeatureConfig {
 
 export interface ClimateHvacModesCardFeatureConfig {
   type: "climate-hvac-modes";
+  style?: "dropdown" | "icons";
   hvac_modes?: HvacMode[];
 }
 
@@ -55,6 +56,10 @@ export interface NumericInputCardFeatureConfig {
   style?: "buttons" | "slider";
 }
 
+export interface TargetHumidityCardFeatureConfig {
+  type: "target-humidity";
+}
+
 export interface TargetTemperatureCardFeatureConfig {
   type: "target-temperature";
 }
@@ -66,6 +71,12 @@ export interface WaterHeaterOperationModesCardFeatureConfig {
 
 export interface HumidifierModesCardFeatureConfig {
   type: "humidifier-modes";
+  style?: "dropdown" | "icons";
+  modes?: string[];
+}
+
+export interface HumidifierToggleCardFeatureConfig {
+  type: "humidifier-toggle";
 }
 
 export const VACUUM_COMMANDS = [
@@ -101,11 +112,13 @@ export type LovelaceCardFeatureConfig =
   | CoverTiltPositionCardFeatureConfig
   | CoverTiltCardFeatureConfig
   | FanSpeedCardFeatureConfig
+  | HumidifierToggleCardFeatureConfig
   | HumidifierModesCardFeatureConfig
   | LawnMowerCommandsCardFeatureConfig
   | LightBrightnessCardFeatureConfig
   | LightColorTempCardFeatureConfig
   | VacuumCommandsCardFeatureConfig
+  | TargetHumidityCardFeatureConfig
   | TargetTemperatureCardFeatureConfig
   | WaterHeaterOperationModesCardFeatureConfig
   | SelectOptionsCardFeatureConfig
