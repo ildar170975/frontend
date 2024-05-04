@@ -3,10 +3,13 @@ import { customElement, property } from "lit/decorators";
 
 @customElement("ha-settings-row")
 export class HaSettingsRow extends LitElement {
-  @property({ type: Boolean, reflect: true }) public narrow!: boolean;
+  @property({ type: Boolean, reflect: true }) public narrow = false;
 
   @property({ type: Boolean, attribute: "three-line" })
   public threeLine = false;
+
+  @property({ type: Boolean, attribute: "wrap-heading", reflect: true })
+  public wrapHeading = false;
 
   protected render(): TemplateResult {
     return html`
@@ -51,7 +54,7 @@ export class HaSettingsRow extends LitElement {
       .body[three-line] {
         min-height: var(--paper-item-body-three-line-min-height, 88px);
       }
-      .body > * {
+      :host(:not([wrap-heading])) body > * {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;

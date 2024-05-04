@@ -41,7 +41,9 @@ export const applyThemesOnElement = (
   // If there is no explicitly desired dark mode provided, we automatically
   // use the active one from `themes`.
   const darkMode =
-    themeSettings?.dark !== undefined ? themeSettings.dark : themes.darkMode;
+    themeSettings?.dark !== undefined
+      ? themeSettings.dark
+      : themes?.darkMode || false;
 
   let cacheKey = themeToApply;
   let themeRules: Partial<ThemeVars> = {};
@@ -59,11 +61,8 @@ export const applyThemesOnElement = (
     const accentColor = themeSettings?.accentColor;
 
     if (darkMode && primaryColor) {
-      themeRules["app-header-background-color"] = hexBlend(
-        primaryColor,
-        "#121212",
-        8
-      );
+      themeRules["app-theme-color"] = hexBlend(primaryColor, "#121212", 8);
+      themeRules["app-header-background-color"] = themeRules["app-theme-color"];
     }
 
     if (primaryColor) {

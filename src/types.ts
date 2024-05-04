@@ -139,6 +139,8 @@ export type FullCalendarView =
   | "dayGridDay"
   | "listWeek";
 
+export type ThemeMode = "auto" | "light" | "dark";
+
 export interface ToggleButton {
   label: string;
   iconPath?: string;
@@ -190,6 +192,7 @@ export interface Context {
 
 export interface ServiceCallResponse {
   context: Context;
+  response?: any;
 }
 
 export interface ServiceCallRequest {
@@ -241,7 +244,8 @@ export interface HomeAssistant {
     service: ServiceCallRequest["service"],
     serviceData?: ServiceCallRequest["serviceData"],
     target?: ServiceCallRequest["target"],
-    notifyOnError?: boolean
+    notifyOnError?: boolean,
+    returnResponse?: boolean
   ): Promise<ServiceCallResponse>;
   callApi<T>(
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -294,3 +298,5 @@ export type AsyncReturnType<T extends (...args: any) => any> = T extends (
     : never;
 
 export type Entries<T> = [keyof T, T[keyof T]][];
+
+export type ItemPath = (number | string)[];

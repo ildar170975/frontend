@@ -3,12 +3,15 @@ import { ensureArray } from "../common/array/ensure-array";
 import { computeStateDomain } from "../common/entity/compute_state_domain";
 import { supportsFeature } from "../common/entity/supports-feature";
 import { UiAction } from "../panels/lovelace/components/hui-action-editor";
-import { HomeAssistant } from "../types";
+import { HomeAssistant, ItemPath } from "../types";
 import {
   DeviceRegistryEntry,
   getDeviceIntegrationLookup,
 } from "./device_registry";
-import { EntityRegistryDisplayEntry } from "./entity_registry";
+import {
+  EntityRegistryDisplayEntry,
+  EntityRegistryEntry,
+} from "./entity_registry";
 import { EntitySources } from "./entity_sources";
 
 export type Selector =
@@ -28,12 +31,14 @@ export type Selector =
   | DateSelector
   | DateTimeSelector
   | DeviceSelector
+  | FloorSelector
   | LegacyDeviceSelector
   | DurationSelector
   | EntitySelector
   | LegacyEntitySelector
   | FileSelector
   | IconSelector
+  | LabelSelector
   | LanguageSelector
   | LocationSelector
   | MediaSelector
@@ -41,6 +46,7 @@ export type Selector =
   | NumberSelector
   | ObjectSelector
   | AssistPipelineSelector
+  | QRCodeSelector
   | SelectSelector
   | SelectorSelector
   | StateSelector
@@ -59,8 +65,7 @@ export type Selector =
 
 export interface ActionSelector {
   action: {
-    reorder_mode?: boolean;
-    nested?: boolean;
+    path?: ItemPath;
   } | null;
 }
 
@@ -113,8 +118,7 @@ export interface ColorTempSelector {
 
 export interface ConditionSelector {
   condition: {
-    reorder_mode?: boolean;
-    nested?: boolean;
+    path?: ItemPath;
   } | null;
 }
 
@@ -163,6 +167,14 @@ export interface DeviceSelector {
   device: {
     filter?: DeviceSelectorFilter | readonly DeviceSelectorFilter[];
     entity?: EntitySelectorFilter | readonly EntitySelectorFilter[];
+    multiple?: boolean;
+  } | null;
+}
+
+export interface FloorSelector {
+  floor: {
+    entity?: EntitySelectorFilter | readonly EntitySelectorFilter[];
+    device?: DeviceSelectorFilter | readonly DeviceSelectorFilter[];
     multiple?: boolean;
   } | null;
 }
@@ -243,6 +255,12 @@ export interface IconSelector {
   } | null;
 }
 
+export interface LabelSelector {
+  label: {
+    multiple?: boolean;
+  };
+}
+
 export interface LanguageSelector {
   language: {
     languages?: string[];
@@ -252,7 +270,11 @@ export interface LanguageSelector {
 }
 
 export interface LocationSelector {
-  location: { radius?: boolean; icon?: string } | null;
+  location: {
+    radius?: boolean;
+    radius_readonly?: boolean;
+    icon?: string;
+  } | null;
 }
 
 export interface LocationSelectorValue {
@@ -342,6 +364,15 @@ export interface BackupLocationSelector {
   backup_location: {} | null;
 }
 
+export interface QRCodeSelector {
+  qr_code: {
+    data: string;
+    scale?: number;
+    error_correction_level?: "low" | "medium" | "quartile" | "high";
+    center_image?: string;
+  } | null;
+}
+
 export interface StringSelector {
   text: {
     multiline?: boolean;
@@ -374,6 +405,7 @@ export interface TargetSelector {
   target: {
     entity?: EntitySelectorFilter | readonly EntitySelectorFilter[];
     device?: DeviceSelectorFilter | readonly DeviceSelectorFilter[];
+    create_domains?: string[];
   } | null;
 }
 
@@ -392,8 +424,7 @@ export interface TimeSelector {
 
 export interface TriggerSelector {
   trigger: {
-    reorder_mode?: boolean;
-    nested?: boolean;
+    path?: ItemPath;
   } | null;
 }
 
@@ -414,8 +445,94 @@ export interface UiActionSelector {
 
 export interface UiColorSelector {
   // eslint-disable-next-line @typescript-eslint/ban-types
-  ui_color: {} | null;
+  ui_color: { default_color?: boolean } | null;
 }
+
+export const expandLabelTarget = (
+  hass: HomeAssistant,
+  labelId: string,
+  areas: HomeAssistant["areas"],
+  devices: HomeAssistant["devices"],
+  entities: HomeAssistant["entities"],
+  targetSelector: TargetSelector,
+  entitySources?: EntitySources
+) => {
+  const newEntities: string[] = [];
+  const newDevices: string[] = [];
+  const newAreas: string[] = [];
+
+  Object.values(areas).forEach((area) => {
+    if (
+      area.labels.includes(labelId) &&
+      areaMeetsTargetSelector(
+        hass,
+        entities,
+        devices,
+        area.area_id,
+        targetSelector,
+        entitySources
+      )
+    ) {
+      newAreas.push(area.area_id);
+    }
+  });
+
+  Object.values(devices).forEach((device) => {
+    if (
+      device.labels.includes(labelId) &&
+      deviceMeetsTargetSelector(
+        hass,
+        Object.values(entities),
+        device,
+        targetSelector,
+        entitySources
+      )
+    ) {
+      newDevices.push(device.id);
+    }
+  });
+
+  Object.values(entities).forEach((entity) => {
+    if (
+      entity.labels.includes(labelId) &&
+      entityMeetsTargetSelector(
+        hass.states[entity.entity_id],
+        targetSelector,
+        entitySources
+      )
+    ) {
+      newEntities.push(entity.entity_id);
+    }
+  });
+
+  return { areas: newAreas, devices: newDevices, entities: newEntities };
+};
+
+export const expandFloorTarget = (
+  hass: HomeAssistant,
+  floorId: string,
+  areas: HomeAssistant["areas"],
+  targetSelector: TargetSelector,
+  entitySources?: EntitySources
+) => {
+  const newAreas: string[] = [];
+  Object.values(areas).forEach((area) => {
+    if (
+      area.floor_id === floorId &&
+      areaMeetsTargetSelector(
+        hass,
+        hass.entities,
+        hass.devices,
+        area.area_id,
+        targetSelector,
+        entitySources
+      )
+    ) {
+      newAreas.push(area.area_id);
+    }
+  });
+  return { areas: newAreas };
+};
 
 export const expandAreaTarget = (
   hass: HomeAssistant,
@@ -522,7 +639,7 @@ export const areaMeetsTargetSelector = (
 
 export const deviceMeetsTargetSelector = (
   hass: HomeAssistant,
-  entityRegistry: EntityRegistryDisplayEntry[],
+  entityRegistry: EntityRegistryDisplayEntry[] | EntityRegistryEntry[],
   device: DeviceRegistryEntry,
   targetSelector: TargetSelector,
   entitySources?: EntitySources

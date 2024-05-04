@@ -7,18 +7,19 @@ import { stopPropagation } from "../../../common/dom/stop_propagation";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { stateColorCss } from "../../../common/entity/state_color";
 import "../../../components/ha-control-select";
-import "../../../components/ha-control-select-menu";
 import type { ControlSelectOption } from "../../../components/ha-control-select";
+import "../../../components/ha-control-select-menu";
 import type { HaControlSelectMenu } from "../../../components/ha-control-select-menu";
 import {
   ClimateEntity,
+  climateHvacModeIcon,
   compareClimateHvacModes,
-  computeHvacModeIcon,
   HvacMode,
 } from "../../../data/climate";
 import { UNAVAILABLE } from "../../../data/entity";
 import { HomeAssistant } from "../../../types";
 import { LovelaceCardFeature, LovelaceCardFeatureEditor } from "../types";
+import { filterModes } from "./common/filter-modes";
 import { ClimateHvacModesCardFeatureConfig } from "./types";
 
 export const supportsClimateHvacModesCardFeature = (stateObj: HassEntity) => {
@@ -42,13 +43,9 @@ class HuiClimateHvacModesCardFeature
   @query("ha-control-select-menu", true)
   private _haSelect?: HaControlSelectMenu;
 
-  static getStubConfig(
-    _,
-    stateObj?: HassEntity
-  ): ClimateHvacModesCardFeatureConfig {
+  static getStubConfig(): ClimateHvacModesCardFeatureConfig {
     return {
       type: "climate-hvac-modes",
-      hvac_modes: stateObj?.attributes.hvac_modes || [],
     };
   }
 
@@ -122,16 +119,23 @@ class HuiClimateHvacModesCardFeature
 
     const color = stateColorCss(this.stateObj);
 
-    const modes = this._config.hvac_modes || [];
+    const ordererHvacModes = (this.stateObj.attributes.hvac_modes || [])
+      .concat()
+      .sort(compareClimateHvacModes);
 
-    const options = modes
-      .filter((mode) => this.stateObj?.attributes.hvac_modes.includes(mode))
-      .sort(compareClimateHvacModes)
-      .map<ControlSelectOption>((mode) => ({
-        value: mode,
-        label: this.hass!.formatEntityState(this.stateObj!, mode),
-        path: computeHvacModeIcon(mode),
-      }));
+    const options = filterModes(
+      ordererHvacModes,
+      this._config.hvac_modes
+    ).map<ControlSelectOption>((mode) => ({
+      value: mode,
+      label: this.hass!.formatEntityState(this.stateObj!, mode),
+      icon: html`
+        <ha-svg-icon
+          slot="graphic"
+          .path=${climateHvacModeIcon(mode)}
+        ></ha-svg-icon>
+      `,
+    }));
 
     if (this._config.style === "dropdown") {
       return html`
@@ -147,15 +151,20 @@ class HuiClimateHvacModesCardFeature
             @selected=${this._valueChanged}
             @closed=${stopPropagation}
           >
-            <ha-svg-icon slot="icon" .path=${mdiThermostat}></ha-svg-icon>
+            ${this._currentHvacMode
+              ? html`
+                  <ha-svg-icon
+                    slot="icon"
+                    .path=${climateHvacModeIcon(this._currentHvacMode)}
+                  ></ha-svg-icon>
+                `
+              : html`
+                  <ha-svg-icon slot="icon" .path=${mdiThermostat}></ha-svg-icon>
+                `}
             ${options.map(
               (option) => html`
                 <ha-list-item .value=${option.value} graphic="icon">
-                  <ha-svg-icon
-                    slot="graphic"
-                    .path=${option.path}
-                  ></ha-svg-icon>
-                  ${option.label}
+                  ${option.icon}${option.label}
                 </ha-list-item>
               `
             )}

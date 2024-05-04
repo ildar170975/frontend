@@ -116,6 +116,9 @@ export const getMyRedirects = (hasSupervisor: boolean): Redirects => ({
   entities: {
     redirect: "/config/entities",
   },
+  labels: {
+    redirect: "/config/labels",
+  },
   energy: {
     component: "energy",
     redirect: "/energy",
@@ -189,6 +192,9 @@ export const getMyRedirects = (hasSupervisor: boolean): Redirects => ({
   },
   logs: {
     redirect: "/config/logs",
+    params: {
+      provider: "string?",
+    },
   },
   repairs: {
     component: "repairs",
@@ -255,7 +261,7 @@ export const getMyRedirects = (hasSupervisor: boolean): Redirects => ({
   },
   supervisor_logs: {
     // Moved from Supervisor panel in 2022.5
-    redirect: "/config/logs",
+    redirect: "/config/logs?provider=supervisor",
   },
   supervisor_info: {
     // Moved from Supervisor panel in 2022.5
@@ -297,7 +303,7 @@ export interface Redirect {
 class HaPanelMy extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public route!: Route;
+  @property({ attribute: false }) public route!: Route;
 
   @state() public _error?: string;
 

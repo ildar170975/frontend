@@ -1,3 +1,5 @@
+import { consume } from "@lit-labs/context";
+import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
 import "@material/mwc-list/mwc-list-item";
 import {
   mdiCog,
@@ -8,19 +10,19 @@ import {
   mdiPencil,
   mdiPlusCircle,
 } from "@mdi/js";
-import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
+import "@polymer/paper-item/paper-item";
+import "@polymer/paper-item/paper-item-body";
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
-  nothing,
   TemplateResult,
+  css,
+  html,
+  nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
 import memoizeOne from "memoize-one";
-import { consume } from "@lit-labs/context";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 import { SENSOR_ENTITIES } from "../../../common/const";
 import { computeDomain } from "../../../common/entity/compute_domain";
@@ -38,13 +40,14 @@ import "../../../components/ha-svg-icon";
 import { getSignedPath } from "../../../data/auth";
 import {
   ConfigEntry,
-  disableConfigEntry,
   DisableConfigEntryResult,
+  disableConfigEntry,
   sortConfigEntries,
 } from "../../../data/config_entries";
+import { fullEntitiesContext } from "../../../data/context";
 import {
-  computeDeviceName,
   DeviceRegistryEntry,
+  computeDeviceName,
   removeConfigEntryFromDevice,
   updateDeviceRegistryEntry,
 } from "../../../data/device_registry";
@@ -62,7 +65,7 @@ import {
 } from "../../../data/entity_registry";
 import { IntegrationManifest, domainToName } from "../../../data/integration";
 import { SceneEntities, showSceneEditor } from "../../../data/scene";
-import { findRelated, RelatedResult } from "../../../data/search";
+import { RelatedResult, findRelated } from "../../../data/search";
 import {
   showAlertDialog,
   showConfirmationDialog,
@@ -83,7 +86,6 @@ import {
   loadDeviceRegistryDetailDialog,
   showDeviceRegistryDetailDialog,
 } from "./device-registry-detail/show-dialog-device-registry-detail";
-import { fullEntitiesContext } from "../../../data/context";
 
 export interface EntityRegistryStateEntry extends EntityRegistryEntry {
   stateName?: string | null;
@@ -114,11 +116,11 @@ export class HaConfigDevicePage extends LitElement {
 
   @property() public deviceId!: string;
 
-  @property({ type: Boolean, reflect: true }) public narrow!: boolean;
+  @property({ type: Boolean, reflect: true }) public narrow = false;
 
-  @property({ type: Boolean }) public isWide!: boolean;
+  @property({ type: Boolean }) public isWide = false;
 
-  @property({ type: Boolean }) public showAdvanced!: boolean;
+  @property({ type: Boolean }) public showAdvanced = false;
 
   @state() private _related?: RelatedResult;
 
@@ -429,19 +431,18 @@ export class HaConfigDevicePage extends LitElement {
                             <a
                               href=${ifDefined(
                                 entityState.attributes.id
-                                  ? `/config/automation/edit/${entityState.attributes.id}`
+                                  ? `/config/automation/edit/${encodeURIComponent(entityState.attributes.id)}`
                                   : undefined
                               )}
                             >
-                              <paper-item
+                              <ha-list-item
+                                hasMeta
                                 .automation=${entityState}
                                 .disabled=${!entityState.attributes.id}
                               >
-                                <paper-item-body>
-                                  ${computeStateName(entityState)}
-                                </paper-item-body>
-                                <ha-icon-next></ha-icon-next>
-                              </paper-item>
+                                ${computeStateName(entityState)}
+                                <ha-icon-next slot="meta"></ha-icon-next>
+                              </ha-list-item>
                             </a>
                             ${!entityState.attributes.id
                               ? html`
@@ -526,15 +527,14 @@ export class HaConfigDevicePage extends LitElement {
                                       : undefined
                                   )}
                                 >
-                                  <paper-item
+                                  <ha-list-item
+                                    hasMeta
                                     .scene=${entityState}
                                     .disabled=${!entityState.attributes.id}
                                   >
-                                    <paper-item-body>
-                                      ${computeStateName(entityState)}
-                                    </paper-item-body>
-                                    <ha-icon-next></ha-icon-next>
-                                  </paper-item>
+                                    ${computeStateName(entityState)}
+                                    <ha-icon-next slot="meta"></ha-icon-next>
+                                  </ha-list-item>
                                 </a>
                                 ${!entityState.attributes.id
                                   ? html`
@@ -621,12 +621,10 @@ export class HaConfigDevicePage extends LitElement {
                       return entityState
                         ? html`
                             <a href=${url}>
-                              <paper-item .script=${script}>
-                                <paper-item-body>
-                                  ${computeStateName(entityState)}
-                                </paper-item-body>
-                                <ha-icon-next></ha-icon-next>
-                              </paper-item>
+                              <ha-list-item hasMeta .script=${script}>
+                                ${computeStateName(entityState)}
+                                <ha-icon-next slot="meta"></ha-icon-next>
+                              </ha-list-item>
                             </a>
                           `
                         : "";
@@ -1097,6 +1095,17 @@ export class HaConfigDevicePage extends LitElement {
       );
       deviceActions.push(...actions);
     }
+    if (domains.includes("matter")) {
+      const matter = await import(
+        "./device-detail/integration-elements/matter/device-actions"
+      );
+      const actions = await matter.getMatterDeviceActions(
+        this,
+        this.hass,
+        device
+      );
+      deviceActions.push(...actions);
+    }
 
     this._deviceActions = deviceActions;
   }
@@ -1200,6 +1209,17 @@ export class HaConfigDevicePage extends LitElement {
           .hass=${this.hass}
           .device=${device}
         ></ha-device-info-zwave_js>
+      `);
+    }
+    if (domains.includes("matter")) {
+      import(
+        "./device-detail/integration-elements/matter/ha-device-info-matter"
+      );
+      deviceInfo.push(html`
+        <ha-device-info-matter
+          .hass=${this.hass}
+          .device=${device}
+        ></ha-device-info-matter>
       `);
     }
   }
@@ -1492,11 +1512,6 @@ export class HaConfigDevicePage extends LitElement {
 
         :host([narrow]) .container {
           margin-top: 0;
-        }
-
-        paper-item {
-          cursor: pointer;
-          font-size: var(--paper-font-body1_-_font-size);
         }
 
         a {

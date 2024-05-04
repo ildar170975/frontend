@@ -28,27 +28,33 @@ import { DOMAINS_TOGGLE } from "../../../common/const";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { stateActive } from "../../../common/entity/state_active";
 import { stateColorCss } from "../../../common/entity/state_color";
-import { stateIconPath } from "../../../common/entity/state_icon_path";
 import "../../../components/ha-card";
+import "../../../components/ha-state-icon";
+import "../../../components/ha-svg-icon";
 import "../../../components/tile/ha-tile-badge";
 import "../../../components/tile/ha-tile-icon";
 import "../../../components/tile/ha-tile-image";
+import type { TileImageStyle } from "../../../components/tile/ha-tile-image";
 import "../../../components/tile/ha-tile-info";
 import { cameraUrlWithWidthHeight } from "../../../data/camera";
 import { isUnavailableState } from "../../../data/entity";
 import type { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import { SENSOR_DEVICE_CLASS_TIMESTAMP } from "../../../data/sensor";
+import { UpdateEntity, computeUpdateStateDisplay } from "../../../data/update";
 import { HomeAssistant } from "../../../types";
+import "../card-features/hui-card-features";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { findEntities } from "../common/find-entities";
 import { handleAction } from "../common/handle-action";
 import { hasAction } from "../common/has-action";
 import "../components/hui-timestamp-display";
-import "../card-features/hui-card-features";
-import type { LovelaceCard, LovelaceCardEditor } from "../types";
-import { computeTileBadge } from "./tile/badges/tile-badge";
+import type {
+  LovelaceCard,
+  LovelaceCardEditor,
+  LovelaceLayoutOptions,
+} from "../types";
+import { renderTileBadge } from "./tile/badges/tile-badge";
 import type { ThermostatCardConfig, TileCardConfig } from "./types";
-import { UpdateEntity, computeUpdateStateDisplay } from "../../../data/update";
 
 const TIMESTAMP_STATE_DOMAINS = ["button", "input_button", "scene"];
 
@@ -59,6 +65,11 @@ export const getEntityDefaultTileIconAction = (entityId: string) => {
     ["button", "input_button", "scene"].includes(domain);
 
   return supportsIconAction ? "toggle" : "more-info";
+};
+
+const DOMAIN_IMAGE_STYLE: Record<string, TileImageStyle> = {
+  update: "square",
+  media_player: "rounded-square",
 };
 
 @customElement("hui-tile-card")
@@ -110,7 +121,25 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
   }
 
   public getCardSize(): number {
-    return 1;
+    return (
+      1 +
+      (this._config?.vertical ? 1 : 0) +
+      (this._config?.features?.length || 0)
+    );
+  }
+
+  public getLayoutOptions(): LovelaceLayoutOptions {
+    const options = {
+      grid_columns: 2,
+      grid_rows: 1,
+    };
+    if (this._config?.features?.length) {
+      options.grid_rows += Math.ceil((this._config.features.length * 2) / 3);
+    }
+    if (this._config?.vertical) {
+      options.grid_rows++;
+    }
+    return options;
   }
 
   private _handleAction(ev: ActionHandlerEvent) {
@@ -213,6 +242,14 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
             <ha-relative-time
               .hass=${this.hass}
               .datetime=${stateObj.last_changed}
+            ></ha-relative-time>
+          `;
+        }
+        if (content === "last_triggered") {
+          return html`
+            <ha-relative-time
+              .hass=${this.hass}
+              .datetime=${stateObj.attributes.last_triggered}
             ></ha-relative-time>
           `;
         }
@@ -335,17 +372,14 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         <ha-card>
           <div class="content ${classMap(contentClasses)}">
             <div class="icon-container">
-              <ha-tile-icon class="icon" .iconPath=${mdiHelp}></ha-tile-icon>
-              <ha-tile-badge
-                class="badge"
-                .iconPath=${mdiExclamationThick}
-                style=${styleMap({
-                  "--tile-badge-background-color": `var(--red-color)`,
-                })}
-              ></ha-tile-badge>
+              <ha-tile-icon>
+                <ha-svg-icon .path=${mdiHelp}></ha-svg-icon>
+              </ha-tile-icon>
+              <ha-tile-badge class="not-found">
+                <ha-svg-icon .path=${mdiExclamationThick}></ha-svg-icon>
+              </ha-tile-badge>
             </div>
             <ha-tile-info
-              class="info"
               .primary=${entityId}
               secondary=${this.hass.localize("ui.card.tile.not_found")}
             ></ha-tile-info>
@@ -353,9 +387,6 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         </ha-card>
       `;
     }
-
-    const icon = this._config.icon || stateObj.attributes.icon;
-    const iconPath = stateIconPath(stateObj);
 
     const name = this._config.name || stateObj.attributes.friendly_name;
 
@@ -376,7 +407,6 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
     const imageUrl = this._config.show_entity_picture
       ? this._getImageUrl(stateObj)
       : undefined;
-    const badge = computeTileBadge(stateObj, this.hass);
 
     return html`
       <ha-card style=${styleMap(style)} class=${classMap({ active })}>
@@ -413,7 +443,7 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
             ${imageUrl
               ? html`
                   <ha-tile-image
-                    class="icon"
+                    .imageStyle=${DOMAIN_IMAGE_STYLE[domain] || "circle"}
                     .imageUrl=${imageUrl}
                   ></ha-tile-image>
                 `
@@ -421,37 +451,32 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
                   <ha-tile-icon
                     data-domain=${ifDefined(domain)}
                     data-state=${ifDefined(stateObj?.state)}
-                    class="icon"
-                    .icon=${icon}
-                    .iconPath=${iconPath}
-                  ></ha-tile-icon>
+                  >
+                    <ha-state-icon
+                      .icon=${this._config.icon}
+                      .stateObj=${stateObj}
+                      .hass=${this.hass}
+                    ></ha-state-icon>
+                  </ha-tile-icon>
                 `}
-            ${badge
-              ? html`
-                  <ha-tile-badge
-                    class="badge"
-                    .icon=${badge.icon}
-                    .iconPath=${badge.iconPath}
-                    style=${styleMap({
-                      "--tile-badge-background-color": badge.color,
-                    })}
-                  ></ha-tile-badge>
-                `
-              : nothing}
+            ${renderTileBadge(stateObj, this.hass)}
           </div>
           <ha-tile-info
             id="info"
-            class="info"
             .primary=${name}
             .secondary=${localizedState}
           ></ha-tile-info>
         </div>
-        <hui-card-features
-          .hass=${this.hass}
-          .stateObj=${stateObj}
-          .color=${this._config.color}
-          .features=${this._config.features}
-        ></hui-card-features>
+        ${this._config.features
+          ? html`
+              <hui-card-features
+                .hass=${this.hass}
+                .stateObj=${stateObj}
+                .color=${this._config.color}
+                .features=${this._config.features}
+              ></hui-card-features>
+            `
+          : nothing}
       </ha-card>
     `;
   }
@@ -474,6 +499,9 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         transition:
           box-shadow 180ms ease-in-out,
           border-color 180ms ease-in-out;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
       }
       ha-card.active {
         --tile-color: var(--state-icon-color);
@@ -509,7 +537,7 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         margin-inline-start: initial;
         margin-inline-end: initial;
       }
-      .vertical .info {
+      .vertical ha-tile-info {
         width: 100%;
       }
       .icon-container {
@@ -521,23 +549,29 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         direction: var(--direction);
         transition: transform 180ms ease-in-out;
       }
-      .icon-container .icon {
+      .icon-container ha-tile-icon,
+      .icon-container ha-tile-image {
         --tile-icon-color: var(--tile-color);
         user-select: none;
         -ms-user-select: none;
         -webkit-user-select: none;
         -moz-user-select: none;
       }
-      .icon-container .badge {
+      .icon-container ha-tile-badge {
         position: absolute;
         top: -3px;
         right: -3px;
+        inset-inline-end: -3px;
+        inset-inline-start: initial;
+      }
+      .icon-container:not([role="button"]) {
+        pointer-events: none;
       }
       .icon-container[role="button"]:focus-visible,
       .icon-container[role="button"]:active {
         transform: scale(1.2);
       }
-      .info {
+      ha-tile-info {
         position: relative;
         padding: 12px;
         flex: 1;
@@ -555,6 +589,10 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
       ha-tile-icon[data-domain="alarm_control_panel"][data-state="triggered"],
       ha-tile-icon[data-domain="lock"][data-state="jammed"] {
         animation: pulse 1s infinite;
+      }
+
+      ha-tile-badge.not-found {
+        --tile-badge-background-color: var(--red-color);
       }
 
       @keyframes pulse {

@@ -51,7 +51,7 @@ class HaConfigSectionStorage extends LitElement {
 
   @property({ attribute: false }) public route!: Route;
 
-  @property({ type: Boolean }) public narrow!: boolean;
+  @property({ type: Boolean }) public narrow = false;
 
   @state() private _error?: { code: string; message: string };
 
@@ -334,6 +334,8 @@ class HaConfigSectionStorage extends LitElement {
       position: relative;
       top: -10px;
       right: 10px;
+      inset-inline-end: 10px;
+      inset-inline-start: initial;
     }
 
     .no-mounts {

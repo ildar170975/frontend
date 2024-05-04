@@ -21,9 +21,9 @@ import "../ha-areas-picker";
 
 @customElement("ha-selector-area")
 export class HaAreaSelector extends LitElement {
-  @property() public hass!: HomeAssistant;
+  @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public selector!: AreaSelector;
+  @property({ attribute: false }) public selector!: AreaSelector;
 
   @property() public value?: any;
 
@@ -87,8 +87,12 @@ export class HaAreaSelector extends LitElement {
           .label=${this.label}
           .helper=${this.helper}
           no-add
-          .deviceFilter=${this._filterDevices}
-          .entityFilter=${this._filterEntities}
+          .deviceFilter=${this.selector.area?.device
+            ? this._filterDevices
+            : undefined}
+          .entityFilter=${this.selector.area?.entity
+            ? this._filterEntities
+            : undefined}
           .disabled=${this.disabled}
           .required=${this.required}
         ></ha-area-picker>
@@ -102,8 +106,12 @@ export class HaAreaSelector extends LitElement {
         .helper=${this.helper}
         .pickAreaLabel=${this.label}
         no-add
-        .deviceFilter=${this._filterDevices}
-        .entityFilter=${this._filterEntities}
+        .deviceFilter=${this.selector.area?.device
+          ? this._filterDevices
+          : undefined}
+        .entityFilter=${this.selector.area?.entity
+          ? this._filterEntities
+          : undefined}
         .disabled=${this.disabled}
         .required=${this.required}
       ></ha-areas-picker>

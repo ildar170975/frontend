@@ -19,23 +19,22 @@ import "./ha-svg-icon";
 
 @customElement("ha-control-switch")
 export class HaControlSwitch extends LitElement {
-  @property({ type: Boolean, reflect: true })
-  public disabled = false;
+  @property({ type: Boolean, reflect: true }) public disabled = false;
 
-  @property({ type: Boolean })
-  public vertical = false;
+  @property({ type: Boolean }) public vertical = false;
 
-  @property({ type: Boolean })
-  public reversed = false;
+  @property({ type: Boolean }) public reversed = false;
 
-  @property({ type: Boolean, reflect: true })
-  public checked?: boolean;
+  @property({ type: Boolean, reflect: true }) public checked = false;
 
   // SVG icon path (if you need a non SVG icon instead, use the provided on icon slot to pass an <ha-icon slot="icon-on"> in)
   @property({ type: String }) pathOn?: string;
 
   // SVG icon path (if you need a non SVG icon instead, use the provided off icon slot to pass an <ha-icon slot="icon-off"> in)
   @property({ type: String }) pathOff?: string;
+
+  @property({ attribute: "touch-action" })
+  public touchAction?: string;
 
   private _mc?: HammerManager;
 
@@ -77,7 +76,7 @@ export class HaControlSwitch extends LitElement {
   setupListeners() {
     if (this.switch && !this._mc) {
       this._mc = new Manager(this.switch, {
-        touchAction: this.vertical ? "pan-x" : "pan-y",
+        touchAction: this.touchAction ?? (this.vertical ? "pan-x" : "pan-y"),
       });
       this._mc.add(
         new Swipe({

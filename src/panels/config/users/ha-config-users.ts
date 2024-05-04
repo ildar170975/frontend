@@ -1,23 +1,24 @@
 import { mdiCheck, mdiPlus } from "@mdi/js";
-import { html, LitElement, PropertyValues } from "lit";
-import { customElement, property } from "lit/decorators";
+import { LitElement, PropertyValues, html } from "lit";
+import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { HASSDomEvent } from "../../../common/dom/fire_event";
 import { LocalizeFunc } from "../../../common/translations/localize";
 import {
   DataTableColumnContainer,
   RowClickedEvent,
+  SortingChangedEvent,
 } from "../../../components/data-table/ha-data-table";
 import "../../../components/data-table/ha-data-table-icon";
 import "../../../components/ha-fab";
 import "../../../components/ha-help-tooltip";
 import "../../../components/ha-svg-icon";
 import {
+  User,
   computeUserBadges,
   deleteUser,
   fetchUsers,
   updateUser,
-  User,
 } from "../../../data/user";
 import { showConfirmationDialog } from "../../../dialogs/generic/show-dialog-box";
 import "../../../layouts/hass-tabs-subpage-data-table";
@@ -25,18 +26,32 @@ import { HomeAssistant, Route } from "../../../types";
 import { configSections } from "../ha-panel-config";
 import { showAddUserDialog } from "./show-dialog-add-user";
 import { showUserDetailDialog } from "./show-dialog-user-detail";
+import { storage } from "../../../common/decorators/storage";
 
 @customElement("ha-config-users")
 export class HaConfigUsers extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property({ attribute: false }) public _users: User[] = [];
+  @property({ type: Boolean }) public isWide = false;
 
-  @property({ type: Boolean }) public isWide!: boolean;
-
-  @property({ type: Boolean }) public narrow!: boolean;
+  @property({ type: Boolean }) public narrow = false;
 
   @property({ attribute: false }) public route!: Route;
+
+  @state() private _users: User[] = [];
+
+  @storage({ key: "users-table-sort", state: false, subscribe: false })
+  private _activeSorting?: SortingChangedEvent;
+
+  @storage({ key: "users-table-grouping", state: false, subscribe: false })
+  private _activeGrouping?: string;
+
+  @storage({
+    key: "users-table-collapsed",
+    state: false,
+    subscribe: false,
+  })
+  private _activeCollapsed?: string;
 
   private _columns = memoizeOne(
     (narrow: boolean, localize: LocalizeFunc): DataTableColumnContainer => {
@@ -70,16 +85,14 @@ export class HaConfigUsers extends LitElement {
           hidden: narrow,
           template: (user) => html`${user.username || "—"}`,
         },
-        group_ids: {
+        group: {
           title: localize("ui.panel.config.users.picker.headers.group"),
           sortable: true,
           filterable: true,
+          groupable: true,
           width: "20%",
           direction: "asc",
           hidden: narrow,
-          template: (user) => html`
-            ${localize(`groups.${user.group_ids[0]}`)}
-          `,
         },
         is_active: {
           title: this.hass.localize(
@@ -164,7 +177,13 @@ export class HaConfigUsers extends LitElement {
         backPath="/config"
         .tabs=${configSections.persons}
         .columns=${this._columns(this.narrow, this.hass.localize)}
-        .data=${this._users}
+        .data=${this._userData(this._users, this.hass.localize)}
+        .initialGroupColumn=${this._activeGrouping}
+        .initialCollapsedGroups=${this._activeCollapsed}
+        .initialSorting=${this._activeSorting}
+        @sorting-changed=${this._handleSortingChanged}
+        @grouping-changed=${this._handleGroupingChanged}
+        @collapsed-changed=${this._handleCollapseChanged}
         @row-click=${this._editUser}
         hasFab
         clickable
@@ -180,6 +199,13 @@ export class HaConfigUsers extends LitElement {
       </hass-tabs-subpage-data-table>
     `;
   }
+
+  private _userData = memoizeOne((users: User[], localize: LocalizeFunc) =>
+    users.map((user) => ({
+      ...user,
+      group: localize(`groups.${user.group_ids[0]}`),
+    }))
+  );
 
   private async _fetchUsers() {
     this._users = await fetchUsers(this.hass);
@@ -244,6 +270,18 @@ export class HaConfigUsers extends LitElement {
         }
       },
     });
+  }
+
+  private _handleSortingChanged(ev: CustomEvent) {
+    this._activeSorting = ev.detail;
+  }
+
+  private _handleGroupingChanged(ev: CustomEvent) {
+    this._activeGrouping = ev.detail.value;
+  }
+
+  private _handleCollapseChanged(ev: CustomEvent) {
+    this._activeCollapsed = ev.detail.value;
   }
 }
 

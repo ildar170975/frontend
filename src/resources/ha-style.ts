@@ -32,6 +32,7 @@ const mainStyles = css`
     --accent-color: ${unsafeCSS(DEFAULT_ACCENT_COLOR)};
     --divider-color: rgba(0, 0, 0, 0.12);
     --outline-color: rgba(0, 0, 0, 0.12);
+    --outline-hover-color: rgba(0, 0, 0, 0.24);
 
     --scrollbar-thumb-color: rgb(194, 194, 194);
 
@@ -429,6 +430,8 @@ const mainStyles = css`
     --direction: ltr;
     --float-start: left;
     --float-end: right;
+    --margin-title-ltr: 0 0 0 24px;
+    --margin-title-rtl: 0 24px 0 0;
 
     ${unsafeCSS(
       Object.entries(derivedStyles)

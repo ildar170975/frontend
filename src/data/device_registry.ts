@@ -1,14 +1,16 @@
-import { Connection, createCollection } from "home-assistant-js-websocket";
-import type { Store } from "home-assistant-js-websocket/dist/store";
 import { computeStateName } from "../common/entity/compute_state_name";
 import { caseInsensitiveStringCompare } from "../common/string/compare";
-import { debounce } from "../common/util/debounce";
 import type { HomeAssistant } from "../types";
 import type {
   EntityRegistryDisplayEntry,
   EntityRegistryEntry,
 } from "./entity_registry";
 import type { EntitySources } from "./entity_sources";
+
+export {
+  fetchDeviceRegistry,
+  subscribeDeviceRegistry,
+} from "./ws-device_registry";
 
 export interface DeviceRegistryEntry {
   id: string;
@@ -18,6 +20,7 @@ export interface DeviceRegistryEntry {
   manufacturer: string | null;
   model: string | null;
   name: string | null;
+  labels: string[];
   sw_version: string | null;
   hw_version: string | null;
   serial_number: string | null;
@@ -41,6 +44,7 @@ export interface DeviceRegistryEntryMutableParams {
   area_id?: string | null;
   name_by_user?: string | null;
   disabled_by?: string | null;
+  labels?: string[];
 }
 
 export const fallbackDeviceName = (
@@ -96,39 +100,6 @@ export const removeConfigEntryFromDevice = (
     config_entry_id: configEntryId,
   });
 
-export const fetchDeviceRegistry = (conn: Connection) =>
-  conn.sendMessagePromise<DeviceRegistryEntry[]>({
-    type: "config/device_registry/list",
-  });
-
-const subscribeDeviceRegistryUpdates = (
-  conn: Connection,
-  store: Store<DeviceRegistryEntry[]>
-) =>
-  conn.subscribeEvents(
-    debounce(
-      () =>
-        fetchDeviceRegistry(conn).then((devices) =>
-          store.setState(devices, true)
-        ),
-      500,
-      true
-    ),
-    "device_registry_updated"
-  );
-
-export const subscribeDeviceRegistry = (
-  conn: Connection,
-  onChange: (devices: DeviceRegistryEntry[]) => void
-) =>
-  createCollection<DeviceRegistryEntry[]>(
-    "_dr",
-    fetchDeviceRegistry,
-    subscribeDeviceRegistryUpdates,
-    conn,
-    onChange
-  );
-
 export const sortDeviceRegistryByName = (
   entries: DeviceRegistryEntry[],
   language: string
@@ -171,7 +142,7 @@ export const getDeviceEntityDisplayLookup = (
 
 export const getDeviceIntegrationLookup = (
   entitySources: EntitySources,
-  entities: EntityRegistryDisplayEntry[]
+  entities: EntityRegistryDisplayEntry[] | EntityRegistryEntry[]
 ): Record<string, string[]> => {
   const deviceIntegrations: Record<string, string[]> = {};
 

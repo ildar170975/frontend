@@ -9,14 +9,21 @@ import {
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { styleMap } from "lit/directives/style-map";
-import { domainIcon } from "../../common/entity/domain_icon";
 import { stateColorCss } from "../../common/entity/state_color";
 import "../../components/ha-control-button";
 import "../../components/ha-control-switch";
+import "../../components/ha-state-icon";
 import { UNAVAILABLE, UNKNOWN } from "../../data/entity";
 import { forwardHaptic } from "../../data/haptics";
 import { callProtectedLockService, LockEntity } from "../../data/lock";
 import { HomeAssistant } from "../../types";
+import { fireEvent } from "../../common/dom/fire_event";
+
+declare global {
+  interface HASSDomEvents {
+    "lock-service-called": undefined;
+  }
+}
 
 @customElement("ha-state-control-lock-toggle")
 export class HaStateControlLockToggle extends LitElement {
@@ -67,6 +74,7 @@ export class HaStateControlLockToggle extends LitElement {
       return;
     }
     forwardHaptic("light");
+    fireEvent(this, "lock-service-called");
     callProtectedLockService(
       this,
       this.hass,
@@ -81,18 +89,6 @@ export class HaStateControlLockToggle extends LitElement {
 
     const color = stateColorCss(this.stateObj);
 
-    const onIcon = domainIcon(
-      "lock",
-      this.stateObj,
-      locking ? "locking" : "locked"
-    );
-
-    const offIcon = domainIcon(
-      "lock",
-      this.stateObj,
-      unlocking ? "unlocking" : "unlocked"
-    );
-
     if (this.stateObj.state === UNKNOWN) {
       return html`
         <div class="buttons">
@@ -100,13 +96,21 @@ export class HaStateControlLockToggle extends LitElement {
             .label=${this.hass.localize("ui.card.lock.lock")}
             @click=${this._turnOn}
           >
-            <ha-svg-icon .path=${onIcon}></ha-svg-icon>
+            <ha-state-icon
+              .hass=${this.hass}
+              .stateObj=${this.stateObj}
+              .stateValue=${locking ? "locking" : "locked"}
+            ></ha-state-icon>
           </ha-control-button>
           <ha-control-button
             .label=${this.hass.localize("ui.card.lock.unlock")}
             @click=${this._turnOff}
           >
-            <ha-svg-icon .path=${offIcon}></ha-svg-icon>
+            <ha-state-icon
+              .hass=${this.hass}
+              .stateObj=${this.stateObj}
+              .stateValue=${unlocking ? "unlocking" : "unlocked"}
+            ></ha-state-icon>
           </ha-control-button>
         </div>
       `;
@@ -114,6 +118,7 @@ export class HaStateControlLockToggle extends LitElement {
 
     return html`
       <ha-control-switch
+        touch-action="none"
         vertical
         reversed
         .checked=${this._isOn}
@@ -127,16 +132,20 @@ export class HaStateControlLockToggle extends LitElement {
         })}
         .disabled=${this.stateObj.state === UNAVAILABLE}
       >
-        <ha-svg-icon
+        <ha-state-icon
           slot="icon-on"
-          .path=${onIcon}
+          .hass=${this.hass}
+          .stateObj=${this.stateObj}
+          .stateValue=${locking ? "locking" : "locked"}
           class=${classMap({ pulse: locking })}
-        ></ha-svg-icon>
-        <ha-svg-icon
+        ></ha-state-icon>
+        <ha-state-icon
           slot="icon-off"
-          .path=${offIcon}
+          .hass=${this.hass}
+          .stateObj=${this.stateObj}
+          .stateValue=${unlocking ? "unlocking" : "unlocked"}
           class=${classMap({ pulse: unlocking })}
-        ></ha-svg-icon>
+        ></ha-state-icon>
       </ha-control-switch>
     `;
   }
@@ -158,8 +167,8 @@ export class HaStateControlLockToggle extends LitElement {
         height: 45vh;
         max-height: 320px;
         min-height: 200px;
-        --control-switch-thickness: 100px;
-        --control-switch-border-radius: 24px;
+        --control-switch-thickness: 130px;
+        --control-switch-border-radius: 36px;
         --control-switch-padding: 6px;
         --mdc-icon-size: 24px;
       }
@@ -169,7 +178,7 @@ export class HaStateControlLockToggle extends LitElement {
       .buttons {
         display: flex;
         flex-direction: column;
-        width: 100px;
+        width: 130px;
         height: 45vh;
         max-height: 320px;
         min-height: 200px;
@@ -179,7 +188,7 @@ export class HaStateControlLockToggle extends LitElement {
       ha-control-button {
         flex: 1;
         width: 100%;
-        --control-button-border-radius: 18px;
+        --control-button-border-radius: 36px;
         --mdc-icon-size: 24px;
       }
       ha-control-button.active {
