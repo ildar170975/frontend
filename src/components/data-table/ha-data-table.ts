@@ -565,36 +565,30 @@ export class HaDataTable extends LitElement {
           }, {});
         const groupedItems: DataTableRowData[] = [];
         Object.entries(sorted).forEach(([groupName, rows]) => {
-          if (
-            groupName !== UNDEFINED_GROUP_KEY ||
-            Object.keys(sorted).length > 1
-          ) {
-            groupedItems.push({
-              append: true,
-              content: html`<div
-                class="mdc-data-table__cell group-header"
-                role="cell"
-                .group=${groupName}
-                @click=${this._collapseGroup}
+          groupedItems.push({
+            append: true,
+            content: html`<div
+              class="mdc-data-table__cell group-header"
+              role="cell"
+              .group=${groupName}
+              @click=${this._collapseGroup}
+            >
+              <ha-icon-button
+                .path=${mdiChevronUp}
+                class=${this._collapsedGroups.includes(groupName)
+                  ? "collapsed"
+                  : ""}
               >
-                <ha-icon-button
-                  .path=${mdiChevronUp}
-                  class=${this._collapsedGroups.includes(groupName)
-                    ? "collapsed"
-                    : ""}
-                >
-                </ha-icon-button>
-                ${groupName === UNDEFINED_GROUP_KEY
-                  ? this.hass.localize("ui.components.data-table.ungrouped")
-                  : groupName || ""}
-              </div>`,
-            });
-          }
+              </ha-icon-button>
+              ${groupName === UNDEFINED_GROUP_KEY
+                ? this.hass.localize("ui.components.data-table.ungrouped")
+                : groupName || ""}
+            </div>`,
+          });
           if (!this._collapsedGroups.includes(groupName)) {
             groupedItems.push(...rows);
           }
         });
-
         items = groupedItems;
       }
 
@@ -735,6 +729,28 @@ export class HaDataTable extends LitElement {
     }
     fireEvent(this, "collapsed-changed", { value: this._collapsedGroups });
   };
+
+  public expandAllGroups() {
+    this._collapsedGroups = [];
+    fireEvent(this, "collapsed-changed", { value: this._collapsedGroups });
+  }
+
+  public collapseAllGroups() {
+    if (
+      !this.groupColumn ||
+      !this.data.some((item) => item[this.groupColumn!])
+    ) {
+      return;
+    }
+    const grouped = groupBy(this.data, (item) => item[this.groupColumn!]);
+    if (grouped.undefined) {
+      // undefined is a reserved group name
+      grouped[UNDEFINED_GROUP_KEY] = grouped.undefined;
+      delete grouped.undefined;
+    }
+    this._collapsedGroups = Object.keys(grouped);
+    fireEvent(this, "collapsed-changed", { value: this._collapsedGroups });
+  }
 
   static get styles(): CSSResultGroup {
     return [
@@ -990,6 +1006,7 @@ export class HaDataTable extends LitElement {
           padding-top: 12px;
           padding-left: 12px;
           padding-inline-start: 12px;
+          padding-inline-end: initial;
           width: 100%;
           font-weight: 500;
           display: flex;
