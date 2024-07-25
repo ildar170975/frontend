@@ -2,6 +2,8 @@ import type { HassEntity } from "home-assistant-js-websocket";
 import { ensureArray } from "../common/array/ensure-array";
 import { computeStateDomain } from "../common/entity/compute_state_domain";
 import { supportsFeature } from "../common/entity/supports-feature";
+import type { CropOptions } from "../dialogs/image-cropper-dialog/show-image-cropper-dialog";
+import { isHelperDomain } from "../panels/config/helpers/const";
 import { UiAction } from "../panels/lovelace/components/hui-action-editor";
 import { HomeAssistant, ItemPath } from "../types";
 import {
@@ -13,8 +15,6 @@ import {
   EntityRegistryEntry,
 } from "./entity_registry";
 import { EntitySources } from "./entity_sources";
-import { isHelperDomain } from "../panels/config/helpers/const";
-import type { CropOptions } from "../dialogs/image-cropper-dialog/show-image-cropper-dialog";
 
 export type Selector =
   | ActionSelector
@@ -64,7 +64,8 @@ export type Selector =
   | TTSSelector
   | TTSVoiceSelector
   | UiActionSelector
-  | UiColorSelector;
+  | UiColorSelector
+  | UiStateContentSelector;
 
 export interface ActionSelector {
   action: {
@@ -455,6 +456,13 @@ export interface UiColorSelector {
   ui_color: { default_color?: boolean } | null;
 }
 
+export interface UiStateContentSelector {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  ui_state_content: {
+    entity_id?: string;
+  } | null;
+}
+
 export const expandLabelTarget = (
   hass: HomeAssistant,
   labelId: string,
@@ -696,7 +704,7 @@ export const entityMeetsTargetSelector = (
 export const filterSelectorDevices = (
   filterDevice: DeviceSelectorFilter,
   device: DeviceRegistryEntry,
-  deviceIntegrationLookup?: Record<string, string[]> | undefined
+  deviceIntegrationLookup?: Record<string, Set<string>> | undefined
 ): boolean => {
   const {
     manufacturer: filterManufacturer,
@@ -713,7 +721,7 @@ export const filterSelectorDevices = (
   }
 
   if (filterIntegration && deviceIntegrationLookup) {
-    if (!deviceIntegrationLookup?.[device.id]?.includes(filterIntegration)) {
+    if (!deviceIntegrationLookup?.[device.id]?.has(filterIntegration)) {
       return false;
     }
   }

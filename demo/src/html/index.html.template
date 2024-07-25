@@ -83,26 +83,6 @@
     <ha-demo></ha-demo>
     <%= renderTemplate("../../../src/html/_js_base.html.template") %>
     <%= renderTemplate("../../../src/html/_preload_roboto.html.template") %>
-    <script>
-      // Safari 12 and below does not have a compliant ES2015 implementation of template literals, so we ship ES5
-      if (!isS11_12) {
-        <% for (const entry of latestEntryJS) { %>
-          import("<%= entry %>");
-        <% } %>
-        window.latestJS = true;
-      }
-    </script>
-    <%= renderTemplate("../../../src/html/_script_load_es5.html.template") %>
-    <script>
-      var _gaq = [["_setAccount", "UA-57927901-5"], ["_trackPageview"]];
-      (function (d, t) {
-        var g = d.createElement(t),
-          s = d.getElementsByTagName(t)[0];
-        g.src =
-          ("https:" == location.protocol ? "//ssl" : "//www") +
-          ".google-analytics.com/ga.js";
-        s.parentNode.insertBefore(g, s);
-      })(document, "script");
-    </script>
+    <%= renderTemplate("../../../src/html/_script_loader.html.template") %>
   </body>
 </html>
