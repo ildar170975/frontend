@@ -270,7 +270,7 @@ class HaScriptPicker extends SubscribeMixin(LitElement) {
           sortable: true,
           filterable: true,
           direction: "asc",
-          grows: true,
+          flex: 2,
           extraTemplate: (script) =>
             script.labels.length
               ? html`<ha-data-table-labels
@@ -301,7 +301,6 @@ class HaScriptPicker extends SubscribeMixin(LitElement) {
         },
         last_triggered: {
           sortable: true,
-          width: "40%",
           title: localize("ui.card.automation.last_triggered"),
           template: (script) => {
             const date = new Date(script.last_triggered);
@@ -322,7 +321,7 @@ class HaScriptPicker extends SubscribeMixin(LitElement) {
         },
         actions: {
           title: "",
-          width: "64px",
+          label: this.hass.localize("ui.panel.config.generic.headers.actions"),
           type: "overflow-menu",
           showNarrow: true,
           moveable: false,

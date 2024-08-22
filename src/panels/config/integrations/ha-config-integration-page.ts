@@ -13,6 +13,7 @@ import {
   mdiDevices,
   mdiDotsVertical,
   mdiDownload,
+  mdiFileCodeOutline,
   mdiHandExtendedOutline,
   mdiOpenInNew,
   mdiPackageVariant,
@@ -329,6 +330,22 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
                       )}</ha-alert
                     >`
                   : ""}
+                ${normalEntries.length === 0 &&
+                this._manifest &&
+                !this._manifest.config_flow &&
+                this.hass.config.components.find(
+                  (comp) => comp.split(".")[0] === this.domain
+                )
+                  ? html`<ha-alert alert-type="info"
+                      ><ha-svg-icon
+                        slot="icon"
+                        path=${mdiFileCodeOutline}
+                      ></ha-svg-icon
+                      >${this.hass.localize(
+                        "ui.panel.config.integrations.config_entry.no_config_flow"
+                      )}</ha-alert
+                    >`
+                  : ""}
               </div>
 
               <div class="card-actions">
@@ -538,7 +555,9 @@ class HaConfigIntegrationPage extends SubscribeMixin(LitElement) {
               </h1>
               ${normalEntries.length === 0
                 ? html`<div class="card-content no-entries">
-                    ${this.hass.config.components.find(
+                    ${this._manifest &&
+                    !this._manifest.config_flow &&
+                    this.hass.config.components.find(
                       (comp) => comp.split(".")[0] === this.domain
                     )
                       ? this.hass.localize(

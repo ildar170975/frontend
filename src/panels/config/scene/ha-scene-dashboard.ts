@@ -260,7 +260,7 @@ class HaSceneDashboard extends SubscribeMixin(LitElement) {
           sortable: true,
           filterable: true,
           direction: "asc",
-          grows: true,
+          flex: 2,
           extraTemplate: (scene) =>
             scene.labels.length
               ? html`<ha-data-table-labels
@@ -294,7 +294,6 @@ class HaSceneDashboard extends SubscribeMixin(LitElement) {
             "ui.panel.config.scene.picker.headers.last_activated"
           ),
           sortable: true,
-          width: "30%",
           template: (scene) => {
             const lastActivated = scene.state;
             if (!lastActivated || isUnavailableState(lastActivated)) {
@@ -312,7 +311,10 @@ class HaSceneDashboard extends SubscribeMixin(LitElement) {
         },
         only_editable: {
           title: "",
-          width: "56px",
+          label: this.hass.localize(
+            "ui.panel.config.scene.picker.headers.editable"
+          ),
+          type: "icon",
           showNarrow: true,
           template: (scene) =>
             !scene.attributes.id
@@ -331,7 +333,7 @@ class HaSceneDashboard extends SubscribeMixin(LitElement) {
         },
         actions: {
           title: "",
-          width: "64px",
+          label: this.hass.localize("ui.panel.config.generic.headers.actions"),
           type: "overflow-menu",
           showNarrow: true,
           moveable: false,

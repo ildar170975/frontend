@@ -48,6 +48,7 @@ import {
   getScriptEditorInitData,
   getScriptStateConfig,
   hasScriptFields,
+  migrateAutomationAction,
   showScriptEditor,
   triggerScript,
 } from "../../../data/script";
@@ -486,6 +487,9 @@ export class HaScriptEditor extends KeyboardShortcutMixin(LitElement) {
     const value = config.sequence;
     if (value && !Array.isArray(value)) {
       config.sequence = [value];
+    }
+    if (config.sequence) {
+      config.sequence = migrateAutomationAction(config.sequence);
     }
     return config;
   }

@@ -1,5 +1,5 @@
 import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
-import { mdiCloud, mdiCodeBraces, mdiPackageVariant } from "@mdi/js";
+import { mdiCloud, mdiFileCodeOutline, mdiPackageVariant } from "@mdi/js";
 import {
   CSSResultGroup,
   LitElement,
@@ -182,9 +182,9 @@ export class HaIntegrationCard extends LitElement {
                 >
               </div>`
             : nothing}
-          ${!this.manifest?.config_flow
+          ${this.manifest && !this.manifest?.config_flow
             ? html`<div class="icon yaml">
-                <ha-svg-icon .path=${mdiCodeBraces}></ha-svg-icon>
+                <ha-svg-icon .path=${mdiFileCodeOutline}></ha-svg-icon>
                 <simple-tooltip
                   animation-delay="0"
                   .position=${computeRTL(this.hass) ? "right" : "left"}

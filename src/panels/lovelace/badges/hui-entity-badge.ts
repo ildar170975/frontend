@@ -144,6 +144,7 @@ export class HuiEntityBadge extends LitElement implements LovelaceBadge {
         .stateObj=${stateObj}
         .hass=${this.hass}
         .content=${this._config.state_content}
+        .name=${this._config.name}
       >
       </state-display>
     `;
@@ -224,8 +225,14 @@ export class HuiEntityBadge extends LitElement implements LovelaceBadge {
         box-sizing: border-box;
         width: auto;
         border-radius: 18px;
-        background-color: var(--card-background-color, white);
+        background: var(
+          --ha-card-background,
+          var(--card-background-color, white)
+        );
+        -webkit-backdrop-filter: var(--ha-card-backdrop-filter, none);
+        backdrop-filter: var(--ha-card-backdrop-filter, none);
         border-width: var(--ha-card-border-width, 1px);
+        box-shadow: var(--ha-card-box-shadow, none);
         border-style: solid;
         border-color: var(
           --ha-card-border-color,

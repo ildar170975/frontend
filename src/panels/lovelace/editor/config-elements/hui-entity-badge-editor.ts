@@ -44,6 +44,8 @@ const badgeConfigStruct = assign(
     color: optional(string()),
     show_entity_picture: optional(boolean()),
     tap_action: optional(actionConfigStruct),
+    show_name: optional(boolean()),
+    image: optional(string()),
   })
 );
 
@@ -120,7 +122,9 @@ export class HuiEntityBadgeEditor
             {
               name: "state_content",
               selector: {
-                ui_state_content: {},
+                ui_state_content: {
+                  allow_name: true,
+                },
               },
               context: {
                 filter_entity: "entity",
@@ -131,7 +135,7 @@ export class HuiEntityBadgeEditor
         {
           name: "",
           type: "expandable",
-          title: localize(`ui.panel.lovelace.editor.badge.entity.actions`),
+          title: localize(`ui.panel.lovelace.editor.badge.entity.interactions`),
           iconPath: mdiGestureTap,
           schema: [
             {
