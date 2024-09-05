@@ -13,13 +13,12 @@ import { ifDefined } from "lit/directives/if-defined";
 import { DOMAINS_TOGGLE } from "../../../common/const";
 import { applyThemesOnElement } from "../../../common/dom/apply_themes_on_element";
 import { computeDomain } from "../../../common/entity/compute_domain";
-import { computeStateDisplay } from "../../../common/entity/compute_state_display";
 import { computeStateName } from "../../../common/entity/compute_state_name";
 import "../../../components/ha-card";
 import "../../../components/ha-icon-button";
 import "../../../components/ha-state-icon";
 import { computeImageUrl, ImageEntity } from "../../../data/image";
-import { ActionHandlerEvent } from "../../../data/lovelace";
+import { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import { HomeAssistant } from "../../../types";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { findEntities } from "../common/find-entities";
@@ -32,6 +31,7 @@ import { createEntityNotFoundWarning } from "../components/hui-warning";
 import "../components/hui-warning-element";
 import { LovelaceCard, LovelaceCardEditor } from "../types";
 import { PictureGlanceCardConfig, PictureGlanceEntityConfig } from "./types";
+import { PersonEntity } from "../../../data/person";
 
 const STATES_OFF = new Set(["closed", "locked", "not_home", "off"]);
 
@@ -184,9 +184,21 @@ class HuiPictureGlanceCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
-    let stateObj: ImageEntity | undefined;
+    let image: string | undefined = this._config.image;
     if (this._config.image_entity) {
-      stateObj = this.hass.states[this._config.image_entity] as ImageEntity;
+      const stateObj: ImageEntity | PersonEntity | undefined =
+        this.hass.states[this._config.image_entity];
+      const domain: string = computeDomain(this._config.image_entity);
+      switch (domain) {
+        case "image":
+          image = computeImageUrl(stateObj as ImageEntity);
+          break;
+        case "person":
+          if ((stateObj as PersonEntity).attributes.entity_picture) {
+            image = (stateObj as PersonEntity).attributes.entity_picture;
+          }
+          break;
+      }
     }
 
     return html`
@@ -210,7 +222,7 @@ class HuiPictureGlanceCard extends LitElement implements LovelaceCard {
           )}
           .config=${this._config}
           .hass=${this.hass}
-          .image=${stateObj ? computeImageUrl(stateObj) : this._config.image}
+          .image=${image}
           .stateImage=${this._config.state_image}
           .stateFilter=${this._config.state_filter}
           .cameraImage=${this._config.camera_image}
@@ -273,17 +285,14 @@ class HuiPictureGlanceCard extends LitElement implements LovelaceCard {
           class=${classMap({
             "state-on": !STATES_OFF.has(stateObj.state),
           })}
-          title=${`${computeStateName(stateObj)} : ${computeStateDisplay(
-            this.hass!.localize,
-            stateObj,
-            this.hass!.locale,
-            this.hass!.config,
-            this.hass!.entities
-          )}`}
+          title=${`${computeStateName(
+            stateObj
+          )} : ${this.hass.formatEntityState(stateObj)}`}
         >
           <ha-state-icon
             .icon=${entityConf.icon}
-            .state=${stateObj}
+            .stateObj=${stateObj}
+            .hass=${this.hass}
           ></ha-state-icon>
         </ha-icon-button>
 
@@ -297,13 +306,7 @@ class HuiPictureGlanceCard extends LitElement implements LovelaceCard {
                         entityConf.attribute
                       ]}${entityConf.suffix}
                     `
-                  : computeStateDisplay(
-                      this.hass!.localize,
-                      stateObj,
-                      this.hass!.locale,
-                      this.hass!.config,
-                      this.hass!.entities
-                    )}
+                  : this.hass.formatEntityState(stateObj)}
               </div>
             `}
       </div>
@@ -356,6 +359,8 @@ class HuiPictureGlanceCard extends LitElement implements LovelaceCard {
       .box .title {
         font-weight: 500;
         margin-left: 8px;
+        margin-inline-start: 8px;
+        margin-inline-end: initial;
       }
 
       ha-icon-button {

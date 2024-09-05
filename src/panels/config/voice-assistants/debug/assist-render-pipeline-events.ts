@@ -13,7 +13,7 @@ import "./assist-render-pipeline-run";
 export class AssistPipelineEvents extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public events!: PipelineRunEvent[];
+  @property({ attribute: false }) public events!: PipelineRunEvent[];
 
   private _processEvents = memoizeOne(
     (events: PipelineRunEvent[]): PipelineRun | undefined => {
@@ -38,7 +38,7 @@ export class AssistPipelineEvents extends LitElement {
           </ha-card>`;
       }
       return html`<ha-alert alert-type="warning"
-        >There where no events in this run.</ha-alert
+        >There were no events in this run.</ha-alert
       >`;
     }
     return html`

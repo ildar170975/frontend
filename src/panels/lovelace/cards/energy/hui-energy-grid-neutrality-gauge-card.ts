@@ -1,7 +1,14 @@
 import { mdiInformation } from "@mdi/js";
 import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
-import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
+import {
+  css,
+  CSSResultGroup,
+  html,
+  LitElement,
+  nothing,
+  PropertyValues,
+} from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { formatNumber } from "../../../../common/number/format_number";
 import "../../../../components/ha-card";
@@ -17,7 +24,8 @@ import { calculateStatisticsSumGrowth } from "../../../../data/recorder";
 import { SubscribeMixin } from "../../../../mixins/subscribe-mixin";
 import type { HomeAssistant } from "../../../../types";
 import type { LovelaceCard } from "../../types";
-import type { EnergyGridGaugeCardConfig } from "../types";
+import type { EnergyGridNeutralityGaugeCardConfig } from "../types";
+import { hasConfigChanged } from "../../common/has-changed";
 
 const LEVELS: LevelDefinition[] = [
   { level: -1, stroke: "var(--energy-grid-consumption-color)" },
@@ -31,7 +39,7 @@ class HuiEnergyGridGaugeCard
 {
   @property({ attribute: false }) public hass?: HomeAssistant;
 
-  @state() private _config?: EnergyGridGaugeCardConfig;
+  @state() private _config?: EnergyGridNeutralityGaugeCardConfig;
 
   @state() private _data?: EnergyData;
 
@@ -51,8 +59,16 @@ class HuiEnergyGridGaugeCard
     return 4;
   }
 
-  public setConfig(config: EnergyGridGaugeCardConfig): void {
+  public setConfig(config: EnergyGridNeutralityGaugeCardConfig): void {
     this._config = config;
+  }
+
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    return (
+      hasConfigChanged(this, changedProps) ||
+      changedProps.size > 1 ||
+      !changedProps.has("hass")
+    );
   }
 
   protected render() {
@@ -176,6 +192,8 @@ class HuiEnergyGridGaugeCard
       ha-svg-icon {
         position: absolute;
         right: 4px;
+        inset-inline-end: 4px;
+        inset-inline-start: initial;
         top: 4px;
         color: var(--secondary-text-color);
       }

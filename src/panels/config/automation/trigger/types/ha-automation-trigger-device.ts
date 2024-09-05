@@ -3,15 +3,19 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../../../../../common/dom/fire_event";
+import { deepEqual } from "../../../../../common/util/deep-equal";
 import "../../../../../components/device/ha-device-picker";
 import "../../../../../components/device/ha-device-trigger-picker";
 import "../../../../../components/ha-form/ha-form";
+import { computeInitialHaFormData } from "../../../../../components/ha-form/compute-initial-ha-form-data";
 import { fullEntitiesContext } from "../../../../../data/context";
 import {
   deviceAutomationsEqual,
   DeviceCapabilities,
   DeviceTrigger,
   fetchDeviceTriggerCapabilities,
+  localizeExtraFieldsComputeLabelCallback,
+  localizeExtraFieldsComputeHelperCallback,
 } from "../../../../../data/device_automation";
 import { EntityRegistryEntry } from "../../../../../data/entity_registry";
 import { HomeAssistant } from "../../../../../types";
@@ -34,8 +38,9 @@ export class HaDeviceTrigger extends LitElement {
 
   private _origTrigger?: DeviceTrigger;
 
-  public static get defaultConfig() {
+  public static get defaultConfig(): DeviceTrigger {
     return {
+      platform: "device",
       device_id: "",
       domain: "",
       entity_id: "",
@@ -44,7 +49,9 @@ export class HaDeviceTrigger extends LitElement {
 
   private _extraFieldsData = memoizeOne(
     (trigger: DeviceTrigger, capabilities: DeviceCapabilities) => {
-      const extraFieldsData: Record<string, any> = {};
+      const extraFieldsData = computeInitialHaFormData(
+        capabilities.extra_fields
+      );
       capabilities.extra_fields.forEach((item) => {
         if (trigger[item.name] !== undefined) {
           extraFieldsData![item.name] = trigger[item.name];
@@ -84,8 +91,13 @@ export class HaDeviceTrigger extends LitElement {
               .data=${this._extraFieldsData(this.trigger, this._capabilities)}
               .schema=${this._capabilities.extra_fields}
               .disabled=${this.disabled}
-              .computeLabel=${this._extraFieldsComputeLabelCallback(
-                this.hass.localize
+              .computeLabel=${localizeExtraFieldsComputeLabelCallback(
+                this.hass,
+                this.trigger
+              )}
+              .computeHelper=${localizeExtraFieldsComputeHelperCallback(
+                this.hass,
+                this.trigger
               )}
               @value-changed=${this._extraFieldsChanged}
             ></ha-form>
@@ -122,6 +134,20 @@ export class HaDeviceTrigger extends LitElement {
     this._capabilities = trigger.domain
       ? await fetchDeviceTriggerCapabilities(this.hass, trigger)
       : undefined;
+
+    if (this._capabilities) {
+      // Match yaml to what is displayed in the form from computeInitialHaFormData
+      const newTrigger = {
+        ...this.trigger,
+        ...this._extraFieldsData(this.trigger, this._capabilities),
+      };
+
+      if (!deepEqual(this.trigger, newTrigger)) {
+        fireEvent(this, "value-changed", {
+          value: newTrigger,
+        });
+      }
+    }
   }
 
   private _devicePicked(ev) {
@@ -159,14 +185,6 @@ export class HaDeviceTrigger extends LitElement {
     });
   }
 
-  private _extraFieldsComputeLabelCallback(localize) {
-    // Returns a callback for ha-form to calculate labels per schema object
-    return (schema) =>
-      localize(
-        `ui.panel.config.automation.editor.triggers.type.device.extra_fields.${schema.name}`
-      ) || schema.name;
-  }
-
   static styles = css`
     ha-device-picker {
       display: block;
@@ -174,6 +192,7 @@ export class HaDeviceTrigger extends LitElement {
     }
 
     ha-form {
+      display: block;
       margin-top: 24px;
     }
   `;

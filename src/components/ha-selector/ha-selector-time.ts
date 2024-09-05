@@ -23,13 +23,14 @@ export class HaTimeSelector extends LitElement {
   protected render() {
     return html`
       <ha-time-input
-        .value=${this.value}
+        .value=${typeof this.value === "string" ? this.value : undefined}
         .locale=${this.hass.locale}
         .disabled=${this.disabled}
         .required=${this.required}
+        clearable
         .helper=${this.helper}
         .label=${this.label}
-        enable-second
+        .enableSecond=${!this.selector.time?.no_second}
       ></ha-time-input>
     `;
   }

@@ -18,8 +18,6 @@ import {
 } from "superstruct";
 import { fireEvent, HASSDomEvent } from "../../../../common/dom/fire_event";
 import { customType } from "../../../../common/structs/is-custom-type";
-import { computeRTLDirection } from "../../../../common/util/compute_rtl";
-import "../../../../components/entity/state-badge";
 import "../../../../components/ha-card";
 import "../../../../components/ha-formfield";
 import "../../../../components/ha-icon";
@@ -69,9 +67,10 @@ const castEntitiesRowConfigStruct = object({
 });
 
 const callServiceEntitiesRowConfigStruct = object({
-  type: literal("call-service"),
+  type: enums(["call-service", "perform-action"]),
   name: string(),
-  service: string(),
+  service: optional(string()),
+  action: optional(string()),
   icon: optional(string()),
   action_name: optional(string()),
   // "service_data" is kept for backwards compatibility. Replaced by "data".
@@ -151,6 +150,7 @@ const entitiesRowConfigStruct = dynamic<any>((value) => {
       case "buttons": {
         return buttonsEntitiesRowConfigStruct;
       }
+      case "perform-action":
       case "call-service": {
         return callServiceEntitiesRowConfigStruct;
       }
@@ -266,7 +266,6 @@ export class HuiEntitiesCardEditor
             .label=${this.hass.localize(
               "ui.panel.lovelace.editor.card.entities.show_header_toggle"
             )}
-            .dir=${computeRTLDirection(this.hass)}
           >
             <ha-switch
               .checked=${this._config!.show_header_toggle !== false}
@@ -278,7 +277,6 @@ export class HuiEntitiesCardEditor
             .label=${this.hass.localize(
               "ui.panel.lovelace.editor.card.generic.state_color"
             )}
-            .dir=${computeRTLDirection(this.hass)}
           >
             <ha-switch
               .checked=${this._config!.state_color}

@@ -7,6 +7,12 @@ import { hsv2rgb, rgb2hex } from "../common/color/convert-color";
 import { rgbw2rgb, rgbww2rgb } from "../common/color/convert-light-color";
 import { fireEvent } from "../common/dom/fire_event";
 
+declare global {
+  interface HASSDomEvents {
+    "cursor-moved": { value?: any };
+  }
+}
+
 function xy2polar(x: number, y: number) {
   const r = Math.sqrt(x * x + y * y);
   const phi = Math.atan2(y, x);
@@ -109,7 +115,7 @@ class HaHsColorPicker extends LitElement {
   @property({ type: Number, attribute: false })
   public renderSize?: number;
 
-  @property({ type: Number })
+  @property({ type: Array })
   public value?: [number, number];
 
   @property({ type: Number })

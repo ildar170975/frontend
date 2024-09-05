@@ -26,6 +26,7 @@ import {
   Trigger,
 } from "./automation";
 import { BlueprintInput } from "./blueprint";
+import { computeObjectId } from "../common/entity/compute_object_id";
 
 export const MODES = ["single", "restart", "queued", "parallel"] as const;
 export const MODES_MAX = ["queued", "parallel"] as const;
@@ -41,24 +42,27 @@ const targetStruct = object({
   entity_id: optional(union([string(), array(string())])),
   device_id: optional(union([string(), array(string())])),
   area_id: optional(union([string(), array(string())])),
+  floor_id: optional(union([string(), array(string())])),
+  label_id: optional(union([string(), array(string())])),
 });
 
 export const serviceActionStruct: Describe<ServiceAction> = assign(
   baseActionStruct,
   object({
-    service: optional(string()),
+    action: optional(string()),
     service_template: optional(string()),
     entity_id: optional(string()),
     target: optional(targetStruct),
     data: optional(object()),
     response_variable: optional(string()),
+    metadata: optional(object()),
   })
 );
 
 const playMediaActionStruct: Describe<PlayMediaAction> = assign(
   baseActionStruct,
   object({
-    service: literal("media_player.play_media"),
+    action: literal("media_player.play_media"),
     target: optional(object({ entity_id: optional(string()) })),
     entity_id: optional(string()),
     data: object({ media_content_id: string(), media_content_type: string() }),
@@ -69,7 +73,7 @@ const playMediaActionStruct: Describe<PlayMediaAction> = assign(
 const activateSceneActionStruct: Describe<ServiceSceneAction> = assign(
   baseActionStruct,
   object({
-    service: literal("scene.turn_on"),
+    action: literal("scene.turn_on"),
     target: optional(object({ entity_id: optional(string()) })),
     entity_id: optional(string()),
     metadata: object(),
@@ -89,14 +93,30 @@ export type ScriptConfig = ManualScriptConfig | BlueprintScriptConfig;
 
 export interface ManualScriptConfig {
   alias: string;
+  description?: string;
   sequence: Action | Action[];
   icon?: string;
   mode?: (typeof MODES)[number];
   max?: number;
+  fields?: Fields;
 }
 
 export interface BlueprintScriptConfig extends ManualScriptConfig {
   use_blueprint: { path: string; input?: BlueprintInput };
+}
+
+export interface Fields {
+  [key: string]: Field;
+}
+
+export interface Field {
+  name?: string;
+  description?: string;
+  advanced?: boolean;
+  required?: boolean;
+  example?: string;
+  default?: any;
+  selector?: any;
 }
 
 interface BaseAction {
@@ -112,12 +132,13 @@ export interface EventAction extends BaseAction {
 }
 
 export interface ServiceAction extends BaseAction {
-  service?: string;
+  action?: string;
   service_template?: string;
   entity_id?: string;
   target?: HassServiceTarget;
   data?: Record<string, unknown>;
   response_variable?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface DeviceAction extends BaseAction {
@@ -139,7 +160,7 @@ export interface DelayAction extends BaseAction {
 }
 
 export interface ServiceSceneAction extends BaseAction {
-  service: "scene.turn_on";
+  action: "scene.turn_on";
   target?: { entity_id?: string };
   entity_id?: string;
   metadata: Record<string, unknown>;
@@ -170,7 +191,7 @@ export interface WaitForTriggerAction extends BaseAction {
 }
 
 export interface PlayMediaAction extends BaseAction {
-  service: "media_player.play_media";
+  action: "media_player.play_media";
   target?: { entity_id?: string };
   entity_id?: string;
   data: { media_content_id: string; media_content_type: string };
@@ -227,8 +248,16 @@ export interface StopAction extends BaseAction {
   error?: boolean;
 }
 
+export interface SequenceAction extends BaseAction {
+  sequence: (ManualScriptConfig | Action)[];
+}
+
 export interface ParallelAction extends BaseAction {
   parallel: ManualScriptConfig | Action | (ManualScriptConfig | Action)[];
+}
+
+export interface SetConversationResponseAction extends BaseAction {
+  set_conversation_response: string;
 }
 
 interface UnknownAction extends BaseAction {
@@ -249,6 +278,7 @@ export type NonConditionAction =
   | VariablesAction
   | PlayMediaAction
   | StopAction
+  | SequenceAction
   | ParallelAction
   | UnknownAction;
 
@@ -274,7 +304,9 @@ export interface ActionTypes {
   service: ServiceAction;
   play_media: PlayMediaAction;
   stop: StopAction;
+  sequence: SequenceAction;
   parallel: ParallelAction;
+  set_conversation_response: SetConversationResponseAction;
   unknown: UnknownAction;
 }
 
@@ -363,10 +395,16 @@ export const getActionType = (action: Action): ActionType => {
   if ("stop" in action) {
     return "stop";
   }
+  if ("sequence" in action) {
+    return "sequence";
+  }
   if ("parallel" in action) {
     return "parallel";
   }
-  if ("service" in action) {
+  if ("set_conversation_response" in action) {
+    return "set_conversation_response";
+  }
+  if ("action" in action) {
     if ("metadata" in action) {
       if (is(action, activateSceneActionStruct)) {
         return "activate_scene";
@@ -378,4 +416,69 @@ export const getActionType = (action: Action): ActionType => {
     return "service";
   }
   return "unknown";
+};
+
+export const hasScriptFields = (
+  hass: HomeAssistant,
+  entityId: string
+): boolean => {
+  const fields = hass.services.script[computeObjectId(entityId)]?.fields;
+  return fields !== undefined && Object.keys(fields).length > 0;
+};
+
+export const migrateAutomationAction = (
+  action: Action | Action[]
+): Action | Action[] => {
+  if (Array.isArray(action)) {
+    return action.map(migrateAutomationAction) as Action[];
+  }
+
+  if ("service" in action) {
+    if (!("action" in action)) {
+      action.action = action.service;
+    }
+    delete action.service;
+  }
+
+  if ("sequence" in action) {
+    for (const sequenceAction of (action as SequenceAction).sequence) {
+      migrateAutomationAction(sequenceAction);
+    }
+  }
+
+  const actionType = getActionType(action);
+
+  if (actionType === "parallel") {
+    const _action = action as ParallelAction;
+    migrateAutomationAction(_action.parallel);
+  }
+
+  if (actionType === "choose") {
+    const _action = action as ChooseAction;
+    if (Array.isArray(_action.choose)) {
+      for (const choice of _action.choose) {
+        migrateAutomationAction(choice.sequence);
+      }
+    } else if (_action.choose) {
+      migrateAutomationAction(_action.choose.sequence);
+    }
+    if (_action.default) {
+      migrateAutomationAction(_action.default);
+    }
+  }
+
+  if (actionType === "repeat") {
+    const _action = action as RepeatAction;
+    migrateAutomationAction(_action.repeat.sequence);
+  }
+
+  if (actionType === "if") {
+    const _action = action as IfAction;
+    migrateAutomationAction(_action.then);
+    if (_action.else) {
+      migrateAutomationAction(_action.else);
+    }
+  }
+
+  return action;
 };

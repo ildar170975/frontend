@@ -1,8 +1,5 @@
 import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
-import "@material/mwc-ripple";
-import type { Ripple } from "@material/mwc-ripple";
-import { RippleHandlers } from "@material/mwc-ripple/ripple-handlers";
-import { mdiCloud, mdiPackageVariant } from "@mdi/js";
+import { mdiCloud, mdiFileCodeOutline, mdiPackageVariant } from "@mdi/js";
 import {
   CSSResultGroup,
   LitElement,
@@ -11,18 +8,13 @@ import {
   html,
   nothing,
 } from "lit";
-import {
-  customElement,
-  eventOptions,
-  property,
-  queryAsync,
-  state,
-} from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import memoizeOne from "memoize-one";
 import { computeRTL } from "../../../common/util/compute_rtl";
-import "../../../components/ha-card";
 import "../../../components/ha-button";
+import "../../../components/ha-card";
+import "../../../components/ha-ripple";
 import "../../../components/ha-svg-icon";
 import { ConfigEntry, ERROR_STATES } from "../../../data/config_entries";
 import type { DeviceRegistryEntry } from "../../../data/device_registry";
@@ -52,11 +44,9 @@ export class HaIntegrationCard extends LitElement {
 
   @property({ type: Boolean }) public supportsDiagnostics = false;
 
-  @property() public logInfo?: IntegrationLogInfo;
+  @property({ attribute: false }) public logInfo?: IntegrationLogInfo;
 
-  @queryAsync("mwc-ripple") private _ripple!: Promise<Ripple | null>;
-
-  @state() private _shouldRenderRipple = false;
+  @property({ attribute: false }) public domainEntities: string[] = [];
 
   protected render(): TemplateResult {
     const entryState = this._getState(this.items);
@@ -79,17 +69,8 @@ export class HaIntegrationCard extends LitElement {
         <a
           href=${`/config/integrations/integration/${this.domain}`}
           class="ripple-anchor"
-          @focus=${this.handleRippleFocus}
-          @blur=${this.handleRippleBlur}
-          @mouseenter=${this.handleRippleMouseEnter}
-          @mouseleave=${this.handleRippleMouseLeave}
-          @mousedown=${this.handleRippleActivate}
-          @mouseup=${this.handleRippleDeactivate}
-          @touchstart=${this.handleRippleActivate}
-          @touchend=${this.handleRippleDeactivate}
-          @touchcancel=${this.handleRippleDeactivate}
         >
-          ${this._shouldRenderRipple ? html`<mwc-ripple></mwc-ripple>` : ""}
+          <ha-ripple></ha-ripple>
           <ha-integration-header
             .hass=${this.hass}
             .domain=${this.domain}
@@ -105,10 +86,10 @@ export class HaIntegrationCard extends LitElement {
                   `ui.panel.config.integrations.config_entry.state.${entryState}`
                 )
               : debugLoggingEnabled
-              ? this.hass.localize(
-                  "ui.panel.config.integrations.config_entry.debug_logging_enabled"
-                )
-              : undefined}
+                ? this.hass.localize(
+                    "ui.panel.config.integrations.config_entry.debug_logging_enabled"
+                  )
+                : undefined}
             .manifest=${this.manifest}
           >
           </ha-integration-header>
@@ -121,9 +102,13 @@ export class HaIntegrationCard extends LitElement {
 
   private _renderSingleEntry(): TemplateResult {
     const devices = this._getDevices(this.items, this.hass.devices);
-    const entities = devices.length
-      ? []
-      : this._getEntities(this.items, this.entityRegistryEntries);
+    const entitiesCount = devices.length
+      ? 0
+      : this._getEntityCount(
+          this.items,
+          this.entityRegistryEntries,
+          this.domainEntities
+        );
 
     const services = !devices.some((device) => device.entry_type !== "service");
 
@@ -140,32 +125,36 @@ export class HaIntegrationCard extends LitElement {
                   `ui.panel.config.integrations.config_entry.${
                     services ? "services" : "devices"
                   }`,
-                  "count",
-                  devices.length
+                  { count: devices.length }
                 )}
               </ha-button>
             </a>`
-          : entities.length > 0
-          ? html`<a
-              href=${`/config/entities?historyBack=1&domain=${this.domain}`}
-            >
-              <ha-button>
-                ${this.hass.localize(
-                  `ui.panel.config.integrations.config_entry.entities`,
-                  "count",
-                  entities.length
-                )}
-              </ha-button>
-            </a>`
-          : html`<a href=${`/config/integrations/integration/${this.domain}`}>
-              <ha-button>
-                ${this.hass.localize(
-                  `ui.panel.config.integrations.config_entry.entries`,
-                  "count",
-                  this.items.length
-                )}
-              </ha-button>
-            </a>`}
+          : entitiesCount > 0
+            ? html`<a
+                href=${`/config/entities?historyBack=1&domain=${this.domain}`}
+              >
+                <ha-button>
+                  ${this.hass.localize(
+                    `ui.panel.config.integrations.config_entry.entities`,
+                    { count: entitiesCount }
+                  )}
+                </ha-button>
+              </a>`
+            : this.items.find((itm) => itm.source !== "yaml")
+              ? html`<a
+                  href=${`/config/integrations/integration/${this.domain}`}
+                >
+                  <ha-button>
+                    ${this.hass.localize(
+                      `ui.panel.config.integrations.config_entry.entries`,
+                      {
+                        count: this.items.filter((itm) => itm.source !== "yaml")
+                          .length,
+                      }
+                    )}
+                  </ha-button>
+                </a>`
+              : html`<div class="spacer"></div>`}
         <div class="icons">
           ${this.manifest && !this.manifest.is_built_in
             ? html`<span class="icon custom">
@@ -193,6 +182,19 @@ export class HaIntegrationCard extends LitElement {
                 >
               </div>`
             : nothing}
+          ${this.manifest && !this.manifest?.config_flow
+            ? html`<div class="icon yaml">
+                <ha-svg-icon .path=${mdiFileCodeOutline}></ha-svg-icon>
+                <simple-tooltip
+                  animation-delay="0"
+                  .position=${computeRTL(this.hass) ? "right" : "left"}
+                  offset="4"
+                  >${this.hass.localize(
+                    "ui.panel.config.integrations.config_entry.no_config_flow"
+                  )}</simple-tooltip
+                >
+              </div>`
+            : nothing}
         </div>
       </div>
     `;
@@ -214,19 +216,42 @@ export class HaIntegrationCard extends LitElement {
     }
   );
 
-  private _getEntities = memoizeOne(
+  private _getEntityCount = memoizeOne(
     (
       configEntry: ConfigEntry[],
-      entityRegistryEntries: EntityRegistryEntry[]
-    ): EntityRegistryEntry[] => {
+      entityRegistryEntries: EntityRegistryEntry[],
+      domainEntities: string[]
+    ): number => {
       if (!entityRegistryEntries) {
-        return [];
+        return domainEntities.length;
       }
-      const entryIds = configEntry.map((entry) => entry.entry_id);
-      return entityRegistryEntries.filter(
+
+      const entryIds = configEntry
+        .map((entry) => entry.entry_id)
+        .filter(Boolean);
+
+      if (!entryIds.length) {
+        return domainEntities.length;
+      }
+
+      const entityRegEntities = entityRegistryEntries.filter(
         (entity) =>
           entity.config_entry_id && entryIds.includes(entity.config_entry_id)
       );
+
+      if (entityRegEntities.length === domainEntities.length) {
+        return domainEntities.length;
+      }
+
+      const entityIds = new Set<string>(
+        entityRegEntities.map((reg) => reg.entity_id)
+      );
+
+      for (const entity of domainEntities) {
+        entityIds.add(entity);
+      }
+
+      return entityIds.size;
     }
   );
 
@@ -245,36 +270,6 @@ export class HaIntegrationCard extends LitElement {
     }
   );
 
-  private _rippleHandlers: RippleHandlers = new RippleHandlers(() => {
-    this._shouldRenderRipple = true;
-    return this._ripple;
-  });
-
-  @eventOptions({ passive: true })
-  private handleRippleActivate(evt?: Event) {
-    this._rippleHandlers.startPress(evt);
-  }
-
-  private handleRippleDeactivate() {
-    this._rippleHandlers.endPress();
-  }
-
-  private handleRippleFocus() {
-    this._rippleHandlers.startFocus();
-  }
-
-  private handleRippleBlur() {
-    this._rippleHandlers.endFocus();
-  }
-
-  protected handleRippleMouseEnter() {
-    this._rippleHandlers.startHover();
-  }
-
-  protected handleRippleMouseLeave() {
-    this._rippleHandlers.endHover();
-  }
-
   static get styles(): CSSResultGroup {
     return [
       haStyle,
@@ -292,6 +287,15 @@ export class HaIntegrationCard extends LitElement {
         .ripple-anchor {
           flex-grow: 1;
           position: relative;
+          outline: none;
+        }
+        .ripple-anchor:focus-visible:before {
+          position: absolute;
+          display: block;
+          content: "";
+          inset: 0;
+          background-color: var(--secondary-text-color);
+          opacity: 0.08;
         }
         ha-integration-header {
           height: 100%;
@@ -344,12 +348,17 @@ export class HaIntegrationCard extends LitElement {
           color: var(--text-primary-color);
           padding: 4px;
           margin-left: 8px;
+          margin-inline-start: 8px;
+          margin-inline-end: initial;
         }
         .icon.cloud {
           background: var(--info-color);
         }
         .icon.custom {
           background: var(--warning-color);
+        }
+        .icon.yaml {
+          background: var(--label-badge-grey);
         }
         .icon ha-svg-icon {
           width: 16px;
@@ -358,6 +367,9 @@ export class HaIntegrationCard extends LitElement {
         }
         simple-tooltip {
           white-space: nowrap;
+        }
+        .spacer {
+          height: 36px;
         }
       `,
     ];

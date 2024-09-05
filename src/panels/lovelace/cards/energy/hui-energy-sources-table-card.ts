@@ -1,17 +1,20 @@
 // @ts-ignore
 import dataTableStyles from "@material/data-table/dist/mdc.data-table.min.css";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
-import { css, CSSResultGroup, html, LitElement, unsafeCSS, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
-import { styleMap } from "lit/directives/style-map";
 import {
-  hex2rgb,
-  lab2rgb,
-  rgb2hex,
-  rgb2lab,
-} from "../../../../common/color/convert-color";
-import { labBrighten, labDarken } from "../../../../common/color/lab";
+  css,
+  CSSResultGroup,
+  html,
+  LitElement,
+  unsafeCSS,
+  nothing,
+  PropertyValues,
+} from "lit";
+import { customElement, property, state } from "lit/decorators";
+import { classMap } from "lit/directives/class-map";
+import { styleMap } from "lit/directives/style-map";
 import { formatNumber } from "../../../../common/number/format_number";
+import { getEnergyColor } from "./common/color";
 import "../../../../components/ha-card";
 import {
   EnergyData,
@@ -23,11 +26,24 @@ import {
 import {
   calculateStatisticSumGrowth,
   getStatisticLabel,
+  isExternalStatistic,
 } from "../../../../data/recorder";
 import { SubscribeMixin } from "../../../../mixins/subscribe-mixin";
 import { HomeAssistant } from "../../../../types";
 import { LovelaceCard } from "../../types";
 import { EnergySourcesTableCardConfig } from "../types";
+import { hasConfigChanged } from "../../common/has-changed";
+import { fireEvent } from "../../../../common/dom/fire_event";
+
+const colorPropertyMap = {
+  grid_return: "--energy-grid-return-color",
+  grid_consumption: "--energy-grid-consumption-color",
+  battery_in: "--energy-battery-in-color",
+  battery_out: "--energy-battery-out-color",
+  solar: "--energy-solar-color",
+  gas: "--energy-gas-color",
+  water: "--energy-water-color",
+};
 
 @customElement("hui-energy-sources-table-card")
 export class HuiEnergySourcesTableCard
@@ -58,6 +74,14 @@ export class HuiEnergySourcesTableCard
 
   public setConfig(config: EnergySourcesTableCardConfig): void {
     this._config = config;
+  }
+
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    return (
+      hasConfigChanged(this, changedProps) ||
+      changedProps.size > 1 ||
+      !changedProps.has("hass")
+    );
   }
 
   protected render() {
@@ -96,27 +120,6 @@ export class HuiEnergySourcesTableCard
     const types = energySourcesByType(this._data.prefs);
 
     const computedStyles = getComputedStyle(this);
-    const solarColor = computedStyles
-      .getPropertyValue("--energy-solar-color")
-      .trim();
-    const batteryFromColor = computedStyles
-      .getPropertyValue("--energy-battery-out-color")
-      .trim();
-    const batteryToColor = computedStyles
-      .getPropertyValue("--energy-battery-in-color")
-      .trim();
-    const returnColor = computedStyles
-      .getPropertyValue("--energy-grid-return-color")
-      .trim();
-    const consumptionColor = computedStyles
-      .getPropertyValue("--energy-grid-consumption-color")
-      .trim();
-    const gasColor = computedStyles
-      .getPropertyValue("--energy-gas-color")
-      .trim();
-    const waterColor = computedStyles
-      .getPropertyValue("--energy-water-color")
-      .trim();
 
     const showCosts =
       types.grid?.[0].flow_from.some(
@@ -225,23 +228,33 @@ export class HuiEnergySourcesTableCard
                   0;
                 totalSolarCompare += compareEnergy;
 
-                const modifiedColor =
-                  idx > 0
-                    ? this.hass.themes.darkMode
-                      ? labBrighten(rgb2lab(hex2rgb(solarColor)), idx)
-                      : labDarken(rgb2lab(hex2rgb(solarColor)), idx)
-                    : undefined;
-                const color = modifiedColor
-                  ? rgb2hex(lab2rgb(modifiedColor))
-                  : solarColor;
-
-                return html`<tr class="mdc-data-table__row">
+                return html`<tr
+                  class="mdc-data-table__row ${classMap({
+                    clickable: !isExternalStatistic(source.stat_energy_from),
+                  })}"
+                  @click=${this._handleMoreInfo}
+                  .entity=${source.stat_energy_from}
+                >
                   <td class="mdc-data-table__cell cell-bullet">
                     <div
                       class="bullet"
                       style=${styleMap({
-                        borderColor: color,
-                        backgroundColor: color + "7F",
+                        borderColor: getEnergyColor(
+                          computedStyles,
+                          this.hass.themes.darkMode,
+                          false,
+                          false,
+                          colorPropertyMap.solar,
+                          idx
+                        ),
+                        backgroundColor: getEnergyColor(
+                          computedStyles,
+                          this.hass.themes.darkMode,
+                          true,
+                          false,
+                          colorPropertyMap.solar,
+                          idx
+                        ),
                       })}
                     ></div>
                   </td>
@@ -326,32 +339,33 @@ export class HuiEnergySourcesTableCard
                   0;
                 totalBatteryCompare += energyFromCompare - energyToCompare;
 
-                const modifiedFromColor =
-                  idx > 0
-                    ? this.hass.themes.darkMode
-                      ? labBrighten(rgb2lab(hex2rgb(batteryFromColor)), idx)
-                      : labDarken(rgb2lab(hex2rgb(batteryFromColor)), idx)
-                    : undefined;
-                const fromColor = modifiedFromColor
-                  ? rgb2hex(lab2rgb(modifiedFromColor))
-                  : batteryFromColor;
-                const modifiedToColor =
-                  idx > 0
-                    ? this.hass.themes.darkMode
-                      ? labBrighten(rgb2lab(hex2rgb(batteryToColor)), idx)
-                      : labDarken(rgb2lab(hex2rgb(batteryToColor)), idx)
-                    : undefined;
-                const toColor = modifiedToColor
-                  ? rgb2hex(lab2rgb(modifiedToColor))
-                  : batteryToColor;
-
-                return html`<tr class="mdc-data-table__row">
+                return html`<tr
+                    class="mdc-data-table__row ${classMap({
+                      clickable: !isExternalStatistic(source.stat_energy_from),
+                    })}"
+                    @click=${this._handleMoreInfo}
+                    .entity=${source.stat_energy_from}
+                  >
                     <td class="mdc-data-table__cell cell-bullet">
                       <div
                         class="bullet"
                         style=${styleMap({
-                          borderColor: fromColor,
-                          backgroundColor: fromColor + "7F",
+                          borderColor: getEnergyColor(
+                            computedStyles,
+                            this.hass.themes.darkMode,
+                            false,
+                            false,
+                            colorPropertyMap.battery_out,
+                            idx
+                          ),
+                          backgroundColor: getEnergyColor(
+                            computedStyles,
+                            this.hass.themes.darkMode,
+                            true,
+                            false,
+                            colorPropertyMap.battery_out,
+                            idx
+                          ),
                         })}
                       ></div>
                     </td>
@@ -382,13 +396,33 @@ export class HuiEnergySourcesTableCard
                       ? html`<td class="mdc-data-table__cell"></td>`
                       : ""}
                   </tr>
-                  <tr class="mdc-data-table__row">
+                  <tr
+                    class="mdc-data-table__row ${classMap({
+                      clickable: !isExternalStatistic(source.stat_energy_to),
+                    })}"
+                    @click=${this._handleMoreInfo}
+                    .entity=${source.stat_energy_to}
+                  >
                     <td class="mdc-data-table__cell cell-bullet">
                       <div
                         class="bullet"
                         style=${styleMap({
-                          borderColor: toColor,
-                          backgroundColor: toColor + "7F",
+                          borderColor: getEnergyColor(
+                            computedStyles,
+                            this.hass.themes.darkMode,
+                            false,
+                            false,
+                            colorPropertyMap.battery_in,
+                            idx
+                          ),
+                          backgroundColor: getEnergyColor(
+                            computedStyles,
+                            this.hass.themes.darkMode,
+                            true,
+                            false,
+                            colorPropertyMap.battery_in,
+                            idx
+                          ),
                         })}
                       ></div>
                     </td>
@@ -495,23 +529,33 @@ export class HuiEnergySourcesTableCard
                       totalGridCostCompare += costCompare;
                     }
 
-                    const modifiedColor =
-                      idx > 0
-                        ? this.hass.themes.darkMode
-                          ? labBrighten(rgb2lab(hex2rgb(consumptionColor)), idx)
-                          : labDarken(rgb2lab(hex2rgb(consumptionColor)), idx)
-                        : undefined;
-                    const color = modifiedColor
-                      ? rgb2hex(lab2rgb(modifiedColor))
-                      : consumptionColor;
-
-                    return html`<tr class="mdc-data-table__row">
+                    return html`<tr
+                      class="mdc-data-table__row ${classMap({
+                        clickable: !isExternalStatistic(flow.stat_energy_from),
+                      })}"
+                      @click=${this._handleMoreInfo}
+                      .entity=${flow.stat_energy_from}
+                    >
                       <td class="mdc-data-table__cell cell-bullet">
                         <div
                           class="bullet"
                           style=${styleMap({
-                            borderColor: color,
-                            backgroundColor: color + "7F",
+                            borderColor: getEnergyColor(
+                              computedStyles,
+                              this.hass.themes.darkMode,
+                              false,
+                              false,
+                              colorPropertyMap.grid_consumption,
+                              idx
+                            ),
+                            backgroundColor: getEnergyColor(
+                              computedStyles,
+                              this.hass.themes.darkMode,
+                              true,
+                              false,
+                              colorPropertyMap.grid_consumption,
+                              idx
+                            ),
                           })}
                         ></div>
                       </td>
@@ -602,23 +646,33 @@ export class HuiEnergySourcesTableCard
                       totalGridCostCompare += costCompare;
                     }
 
-                    const modifiedColor =
-                      idx > 0
-                        ? this.hass.themes.darkMode
-                          ? labBrighten(rgb2lab(hex2rgb(returnColor)), idx)
-                          : labDarken(rgb2lab(hex2rgb(returnColor)), idx)
-                        : undefined;
-                    const color = modifiedColor
-                      ? rgb2hex(lab2rgb(modifiedColor))
-                      : returnColor;
-
-                    return html`<tr class="mdc-data-table__row">
+                    return html`<tr
+                      class="mdc-data-table__row ${classMap({
+                        clickable: !isExternalStatistic(flow.stat_energy_to),
+                      })}"
+                      @click=${this._handleMoreInfo}
+                      .entity=${flow.stat_energy_to}
+                    >
                       <td class="mdc-data-table__cell cell-bullet">
                         <div
                           class="bullet"
                           style=${styleMap({
-                            borderColor: color,
-                            backgroundColor: color + "7F",
+                            borderColor: getEnergyColor(
+                              computedStyles,
+                              this.hass.themes.darkMode,
+                              false,
+                              false,
+                              colorPropertyMap.grid_return,
+                              idx
+                            ),
+                            backgroundColor: getEnergyColor(
+                              computedStyles,
+                              this.hass.themes.darkMode,
+                              true,
+                              false,
+                              colorPropertyMap.grid_return,
+                              idx
+                            ),
                           })}
                         ></div>
                       </td>
@@ -673,7 +727,9 @@ export class HuiEnergySourcesTableCard
                     </tr>`;
                   })}`
               )}
-              ${types.grid
+              ${types.grid &&
+              (types.grid?.[0].flow_from?.length ||
+                types.grid?.[0].flow_to?.length)
                 ? html` <tr class="mdc-data-table__row total">
                     <td class="mdc-data-table__cell"></td>
                     <th class="mdc-data-table__cell" scope="row">
@@ -761,23 +817,33 @@ export class HuiEnergySourcesTableCard
                   totalGasCostCompare += costCompare;
                 }
 
-                const modifiedColor =
-                  idx > 0
-                    ? this.hass.themes.darkMode
-                      ? labBrighten(rgb2lab(hex2rgb(gasColor)), idx)
-                      : labDarken(rgb2lab(hex2rgb(gasColor)), idx)
-                    : undefined;
-                const color = modifiedColor
-                  ? rgb2hex(lab2rgb(modifiedColor))
-                  : gasColor;
-
-                return html`<tr class="mdc-data-table__row">
+                return html`<tr
+                  class="mdc-data-table__row ${classMap({
+                    clickable: !isExternalStatistic(source.stat_energy_from),
+                  })}"
+                  @click=${this._handleMoreInfo}
+                  .entity=${source.stat_energy_from}
+                >
                   <td class="mdc-data-table__cell cell-bullet">
                     <div
                       class="bullet"
                       style=${styleMap({
-                        borderColor: color,
-                        backgroundColor: color + "7F",
+                        borderColor: getEnergyColor(
+                          computedStyles,
+                          this.hass.themes.darkMode,
+                          false,
+                          false,
+                          colorPropertyMap.gas,
+                          idx
+                        ),
+                        backgroundColor: getEnergyColor(
+                          computedStyles,
+                          this.hass.themes.darkMode,
+                          true,
+                          false,
+                          colorPropertyMap.gas,
+                          idx
+                        ),
                       })}
                     ></div>
                   </td>
@@ -915,23 +981,33 @@ export class HuiEnergySourcesTableCard
                   totalWaterCostCompare += costCompare;
                 }
 
-                const modifiedColor =
-                  idx > 0
-                    ? this.hass.themes.darkMode
-                      ? labBrighten(rgb2lab(hex2rgb(waterColor)), idx)
-                      : labDarken(rgb2lab(hex2rgb(waterColor)), idx)
-                    : undefined;
-                const color = modifiedColor
-                  ? rgb2hex(lab2rgb(modifiedColor))
-                  : waterColor;
-
-                return html`<tr class="mdc-data-table__row">
+                return html`<tr
+                  class="mdc-data-table__row ${classMap({
+                    clickable: !isExternalStatistic(source.stat_energy_from),
+                  })}"
+                  @click=${this._handleMoreInfo}
+                  .entity=${source.stat_energy_from}
+                >
                   <td class="mdc-data-table__cell cell-bullet">
                     <div
                       class="bullet"
                       style=${styleMap({
-                        borderColor: color,
-                        backgroundColor: color + "7F",
+                        borderColor: getEnergyColor(
+                          computedStyles,
+                          this.hass.themes.darkMode,
+                          false,
+                          false,
+                          colorPropertyMap.water,
+                          idx
+                        ),
+                        backgroundColor: getEnergyColor(
+                          computedStyles,
+                          this.hass.themes.darkMode,
+                          true,
+                          false,
+                          colorPropertyMap.water,
+                          idx
+                        ),
                       })}
                     ></div>
                   </td>
@@ -1080,6 +1156,13 @@ export class HuiEnergySourcesTableCard
     </ha-card>`;
   }
 
+  private _handleMoreInfo(ev): void {
+    const entityId = ev.currentTarget?.entity;
+    if (entityId && !isExternalStatistic(entityId)) {
+      fireEvent(this, "hass-more-info", { entityId });
+    }
+  }
+
   static get styles(): CSSResultGroup {
     return css`
       ${unsafeCSS(dataTableStyles)}
@@ -1095,6 +1178,9 @@ export class HuiEnergySourcesTableCard
       }
       .mdc-data-table__row:not(.mdc-data-table__row--selected):hover {
         background-color: rgba(var(--rgb-primary-text-color), 0.04);
+      }
+      .clickable {
+        cursor: pointer;
       }
       .total {
         --mdc-typography-body2-font-weight: 500;

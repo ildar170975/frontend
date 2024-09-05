@@ -1,9 +1,8 @@
-import { LovelaceCardConfig } from "../../../data/lovelace";
-import "../cards/hui-button-card";
-import "../cards/hui-calendar-card";
-import "../cards/hui-entities-card";
-import "../cards/hui-entity-button-card";
+import { LovelaceCardConfig } from "../../../data/lovelace/config/card";
 import "../cards/hui-entity-card";
+import "../cards/hui-entities-card";
+import "../cards/hui-button-card";
+import "../cards/hui-entity-button-card";
 import "../cards/hui-glance-card";
 import "../cards/hui-grid-card";
 import "../cards/hui-light-card";
@@ -24,6 +23,7 @@ const ALWAYS_LOADED_TYPES = new Set([
   "entity-button",
   "glance",
   "grid",
+  "section",
   "light",
   "sensor",
   "thermostat",
@@ -44,6 +44,8 @@ const LAZY_LOAD_TYPES = {
     import("../cards/energy/hui-energy-date-selection-card"),
   "energy-devices-graph": () =>
     import("../cards/energy/hui-energy-devices-graph-card"),
+  "energy-devices-detail-graph": () =>
+    import("../cards/energy/hui-energy-devices-detail-graph-card"),
   "energy-distribution": () =>
     import("../cards/energy/hui-energy-distribution-card"),
   "energy-gas-graph": () => import("../cards/energy/hui-energy-gas-graph-card"),
@@ -77,7 +79,8 @@ const LAZY_LOAD_TYPES = {
   "picture-glance": () => import("../cards/hui-picture-glance-card"),
   picture: () => import("../cards/hui-picture-card"),
   "plant-status": () => import("../cards/hui-plant-status-card"),
-  "safe-mode": () => import("../cards/hui-safe-mode-card"),
+  "recovery-mode": () => import("../cards/hui-recovery-mode-card"),
+  "todo-list": () => import("../cards/hui-todo-list-card"),
   "shopping-list": () => import("../cards/hui-shopping-list-card"),
   starting: () => import("../cards/hui-starting-card"),
   "statistics-graph": () => import("../cards/hui-statistics-graph-card"),

@@ -11,6 +11,7 @@ const buttons: {
   min?: number;
   max?: number;
   step?: number;
+  unit?: string;
   class?: string;
 }[] = [
   {
@@ -28,6 +29,11 @@ const buttons: {
     id: "custom",
     label: "Custom",
     class: "custom",
+  },
+  {
+    id: "unit",
+    label: "With unit",
+    unit: "m",
   },
 ];
 
@@ -50,6 +56,7 @@ export class DemoHarControlNumberButtons extends LitElement {
               <pre>Config: ${JSON.stringify(config)}</pre>
               <ha-control-number-buttons
                 .value=${this.value}
+                .unit=${config.unit}
                 .min=${config.min}
                 .max=${config.max}
                 .step=${config.step}
@@ -87,7 +94,7 @@ export class DemoHarControlNumberButtons extends LitElement {
         --control-number-buttons-background-color: #2196f3;
         --control-number-buttons-background-opacity: 0.1;
         --control-number-buttons-thickness: 100px;
-        --control-number-buttons-border-radius: 24px;
+        --control-number-buttons-border-radius: 36px;
       }
     `;
   }

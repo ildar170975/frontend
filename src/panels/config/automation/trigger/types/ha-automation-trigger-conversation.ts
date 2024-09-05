@@ -25,8 +25,8 @@ export class HaConversationTrigger
 
   @query("#option_input", true) private _optionInput?: HaTextField;
 
-  public static get defaultConfig(): Omit<ConversationTrigger, "platform"> {
-    return { command: "" };
+  public static get defaultConfig(): ConversationTrigger {
+    return { platform: "conversation", command: "" };
   }
 
   protected render() {
@@ -157,6 +157,8 @@ export class HaConversationTrigger
       }
       mwc-button {
         margin-left: 8px;
+        margin-inline-start: 8px;
+        margin-inline-end: initial;
       }
       ha-textfield {
         display: block;

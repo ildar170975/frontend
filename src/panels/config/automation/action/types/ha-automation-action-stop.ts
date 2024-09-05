@@ -10,11 +10,11 @@ import { ActionElement } from "../ha-automation-action-row";
 export class HaStopAction extends LitElement implements ActionElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public action!: StopAction;
+  @property({ attribute: false }) public action!: StopAction;
 
   @property({ type: Boolean }) public disabled = false;
 
-  public static get defaultConfig() {
+  public static get defaultConfig(): StopAction {
     return { stop: "" };
   }
 

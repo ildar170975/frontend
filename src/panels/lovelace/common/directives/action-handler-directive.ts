@@ -1,6 +1,4 @@
 /* eslint-disable max-classes-per-file */
-import "@material/mwc-ripple";
-import type { Ripple } from "@material/mwc-ripple";
 import { noChange } from "lit";
 import {
   AttributePart,
@@ -13,13 +11,8 @@ import { deepEqual } from "../../../../common/util/deep-equal";
 import {
   ActionHandlerDetail,
   ActionHandlerOptions,
-} from "../../../../data/lovelace";
-
-const isTouch =
-  "ontouchstart" in window ||
-  navigator.maxTouchPoints > 0 ||
-  // @ts-ignore
-  navigator.msMaxTouchPoints > 0;
+} from "../../../../data/lovelace/action_handler";
+import { isTouch } from "../../../../util/is_touch";
 
 interface ActionHandlerType extends HTMLElement {
   holdTime: number;
@@ -46,8 +39,6 @@ declare global {
 class ActionHandler extends HTMLElement implements ActionHandlerType {
   public holdTime = 500;
 
-  public ripple: Ripple;
-
   protected timer?: number;
 
   protected held = false;
@@ -56,23 +47,20 @@ class ActionHandler extends HTMLElement implements ActionHandlerType {
 
   private dblClickTimeout?: number;
 
-  constructor() {
-    super();
-    this.ripple = document.createElement("mwc-ripple");
-  }
-
   public connectedCallback() {
     Object.assign(this.style, {
       position: "fixed",
       width: isTouch ? "100px" : "50px",
       height: isTouch ? "100px" : "50px",
-      transform: "translate(-50%, -50%)",
+      transform: "translate(-50%, -50%) scale(0)",
       pointerEvents: "none",
       zIndex: "999",
+      background: "var(--primary-color)",
+      display: null,
+      opacity: "0.2",
+      borderRadius: "50%",
+      transition: "transform 180ms ease-in-out",
     });
-
-    this.appendChild(this.ripple);
-    this.ripple.primary = true;
 
     [
       "touchcancel",
@@ -224,17 +212,16 @@ class ActionHandler extends HTMLElement implements ActionHandlerType {
     Object.assign(this.style, {
       left: `${x}px`,
       top: `${y}px`,
-      display: null,
+      transform: "translate(-50%, -50%) scale(1)",
     });
-    this.ripple.disabled = false;
-    this.ripple.startPress();
-    this.ripple.unbounded = true;
   }
 
   private stopAnimation() {
-    this.ripple.endPress();
-    this.ripple.disabled = true;
-    this.style.display = "none";
+    Object.assign(this.style, {
+      left: null,
+      top: null,
+      transform: "translate(-50%, -50%) scale(0)",
+    });
   }
 }
 

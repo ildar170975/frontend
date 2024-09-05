@@ -14,6 +14,7 @@ import { ConfigEntry, getConfigEntries } from "../../../../data/config_entries";
 import {
   emptySolarEnergyPreference,
   SolarSourceTypeEnergyPreference,
+  energyStatisticHelpUrl,
 } from "../../../../data/energy";
 import { getSensorDeviceClassConvertibleUnits } from "../../../../data/sensor";
 import { showConfigFlowDialog } from "../../../../dialogs/config-flow/show-dialog-config-flow";
@@ -98,6 +99,7 @@ export class DialogEnergySolarSettings
 
         <ha-statistic-picker
           .hass=${this.hass}
+          .helpMissingEntityUrl=${energyStatisticHelpUrl}
           .includeUnitClass=${energyUnitClasses}
           .value=${this._source.stat_energy_from}
           .label=${this.hass.localize(
@@ -153,8 +155,9 @@ export class DialogEnergySolarSettings
                     >
                       <img
                         alt=""
+                        crossorigin="anonymous"
                         referrerpolicy="no-referrer"
-                        style="height: 24px; margin-right: 16px;"
+                        style="height: 24px; margin-right: 16px; margin-inline-end: 16px; margin-inline-start: initial;"
                         src=${brandsUrl({
                           domain: entry.domain,
                           type: "icon",
@@ -201,13 +204,13 @@ export class DialogEnergySolarSettings
       domains.length === 0
         ? []
         : domains.length === 1
-        ? await getConfigEntries(this.hass, {
-            type: ["service"],
-            domain: domains[0],
-          })
-        : (await getConfigEntries(this.hass, { type: ["service"] })).filter(
-            (entry) => domains.includes(entry.domain)
-          );
+          ? await getConfigEntries(this.hass, {
+              type: ["service"],
+              domain: domains[0],
+            })
+          : (await getConfigEntries(this.hass, { type: ["service"] })).filter(
+              (entry) => domains.includes(entry.domain)
+            );
   }
 
   private _handleForecastChanged(ev: CustomEvent) {
@@ -274,6 +277,8 @@ export class DialogEnergySolarSettings
         img {
           height: 24px;
           margin-right: 16px;
+          margin-inline-end: 16px;
+          margin-inline-start: initial;
         }
         ha-formfield {
           display: block;
@@ -283,9 +288,13 @@ export class DialogEnergySolarSettings
         }
         .forecast-options {
           padding-left: 32px;
+          padding-inline-start: 32px;
+          padding-inline-end: initial;
         }
         .forecast-options mwc-button {
           padding-left: 8px;
+          padding-inline-start: 8px;
+          padding-inline-end: initial;
         }
       `,
     ];

@@ -8,7 +8,10 @@ import "../../../../components/entity/ha-statistic-picker";
 import "../../../../components/ha-dialog";
 import "../../../../components/ha-formfield";
 import "../../../../components/ha-radio";
-import { DeviceConsumptionEnergyPreference } from "../../../../data/energy";
+import {
+  DeviceConsumptionEnergyPreference,
+  energyStatisticHelpUrl,
+} from "../../../../data/energy";
 import { getSensorDeviceClassConvertibleUnits } from "../../../../data/sensor";
 import { HassDialog } from "../../../../dialogs/make-dialog-manager";
 import { haStyleDialog } from "../../../../resources/styles";
@@ -41,9 +44,10 @@ export class DialogEnergyDeviceSettings
     this._energy_units = (
       await getSensorDeviceClassConvertibleUnits(this.hass, "energy")
     ).units;
-    this._excludeList = this._params.device_consumptions.map(
-      (entry) => entry.stat_consumption
-    );
+    this._device = this._params.device;
+    this._excludeList = this._params.device_consumptions
+      .map((entry) => entry.stat_consumption)
+      .filter((id) => id !== this._device?.stat_consumption);
   }
 
   public closeDialog(): void {
@@ -83,7 +87,9 @@ export class DialogEnergyDeviceSettings
 
         <ha-statistic-picker
           .hass=${this.hass}
+          .helpMissingEntityUrl=${energyStatisticHelpUrl}
           .includeUnitClass=${energyUnitClasses}
+          .value=${this._device?.stat_consumption}
           .label=${this.hass.localize(
             "ui.panel.config.energy.device_consumption.dialog.device_consumption_energy"
           )}
@@ -91,6 +97,17 @@ export class DialogEnergyDeviceSettings
           @value-changed=${this._statisticChanged}
           dialogInitialFocus
         ></ha-statistic-picker>
+
+        <ha-textfield
+          .label=${this.hass.localize(
+            "ui.panel.config.energy.device_consumption.dialog.display_name"
+          )}
+          type="text"
+          .disabled=${!this._device}
+          .value=${this._device?.name || ""}
+          @input=${this._nameChanged}
+        >
+        </ha-textfield>
 
         <mwc-button @click=${this.closeDialog} slot="secondaryAction">
           ${this.hass.localize("ui.common.cancel")}
@@ -114,6 +131,17 @@ export class DialogEnergyDeviceSettings
     this._device = { stat_consumption: ev.detail.value };
   }
 
+  private _nameChanged(ev) {
+    const newDevice = {
+      ...this._device!,
+      name: ev.target!.value,
+    } as DeviceConsumptionEnergyPreference;
+    if (!newDevice.name) {
+      delete newDevice.name;
+    }
+    this._device = newDevice;
+  }
+
   private async _save() {
     try {
       await this._params!.saveCallback(this._device!);
@@ -128,6 +156,10 @@ export class DialogEnergyDeviceSettings
       haStyleDialog,
       css`
         ha-statistic-picker {
+          width: 100%;
+        }
+        ha-textfield {
+          margin-top: 16px;
           width: 100%;
         }
       `,

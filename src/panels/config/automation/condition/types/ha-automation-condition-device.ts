@@ -12,6 +12,8 @@ import {
   DeviceCapabilities,
   DeviceCondition,
   fetchDeviceConditionCapabilities,
+  localizeExtraFieldsComputeLabelCallback,
+  localizeExtraFieldsComputeHelperCallback,
 } from "../../../../../data/device_automation";
 import { EntityRegistryEntry } from "../../../../../data/entity_registry";
 import type { HomeAssistant } from "../../../../../types";
@@ -34,8 +36,9 @@ export class HaDeviceCondition extends LitElement {
 
   private _origCondition?: DeviceCondition;
 
-  public static get defaultConfig() {
+  public static get defaultConfig(): DeviceCondition {
     return {
+      condition: "device",
       device_id: "",
       domain: "",
       entity_id: "",
@@ -84,8 +87,13 @@ export class HaDeviceCondition extends LitElement {
               .data=${this._extraFieldsData(this.condition, this._capabilities)}
               .schema=${this._capabilities.extra_fields}
               .disabled=${this.disabled}
-              .computeLabel=${this._extraFieldsComputeLabelCallback(
-                this.hass.localize
+              .computeLabel=${localizeExtraFieldsComputeLabelCallback(
+                this.hass,
+                this.condition
+              )}
+              .computeHelper=${localizeExtraFieldsComputeHelperCallback(
+                this.hass,
+                this.condition
               )}
               @value-changed=${this._extraFieldsChanged}
             ></ha-form>
@@ -153,14 +161,6 @@ export class HaDeviceCondition extends LitElement {
     });
   }
 
-  private _extraFieldsComputeLabelCallback(localize) {
-    // Returns a callback for ha-form to calculate labels per schema object
-    return (schema) =>
-      localize(
-        `ui.panel.config.automation.editor.conditions.type.device.extra_fields.${schema.name}`
-      ) || schema.name;
-  }
-
   static styles = css`
     ha-device-picker {
       display: block;
@@ -168,6 +168,7 @@ export class HaDeviceCondition extends LitElement {
     }
 
     ha-form {
+      display: block;
       margin-top: 24px;
     }
   `;

@@ -1,3 +1,5 @@
+import { AutomationConfig } from "../data/automation";
+
 const CALLBACK_EXTERNAL_BUS = "externalBus";
 
 interface CommandInFlight {
@@ -33,8 +35,32 @@ interface EMOutgoingMessageConfigGet extends EMMessage {
   type: "config/get";
 }
 
+interface EMOutgoingMessageBarCodeScan extends EMMessage {
+  type: "bar_code/scan";
+  payload: {
+    title: string;
+    description: string;
+    alternative_option_label?: string;
+  };
+}
+
+interface EMOutgoingMessageBarCodeClose extends EMMessage {
+  type: "bar_code/close";
+}
+
+interface EMOutgoingMessageBarCodeNotify extends EMMessage {
+  type: "bar_code/notify";
+  payload: {
+    message: string;
+  };
+}
+
 interface EMOutgoingMessageMatterCommission extends EMMessage {
   type: "matter/commission";
+}
+
+interface EMOutgoingMessageImportThreadCredentials extends EMMessage {
+  type: "thread/import_credentials";
 }
 
 type EMOutgoingMessageWithAnswer = {
@@ -102,21 +128,39 @@ interface EMOutgoingMessageAssistShow extends EMMessage {
     start_listening: boolean;
   };
 }
+interface EMOutgoingMessageImprovScan extends EMMessage {
+  type: "improv/scan";
+}
+
+interface EMOutgoingMessageThreadStoreInPlatformKeychain extends EMMessage {
+  type: "thread/store_in_platform_keychain";
+  payload: {
+    mac_extended_address: string;
+    border_agent_id: string | null;
+    active_operational_dataset: string;
+  };
+}
 
 type EMOutgoingMessageWithoutAnswer =
-  | EMOutgoingMessageHaptic
-  | EMOutgoingMessageConnectionStatus
+  | EMMessageResultError
+  | EMMessageResultSuccess
   | EMOutgoingMessageAppConfiguration
-  | EMOutgoingMessageTagWrite
-  | EMOutgoingMessageSidebarShow
   | EMOutgoingMessageAssistShow
+  | EMOutgoingMessageBarCodeClose
+  | EMOutgoingMessageBarCodeNotify
+  | EMOutgoingMessageBarCodeScan
+  | EMOutgoingMessageConnectionStatus
   | EMOutgoingMessageExoplayerPlayHLS
   | EMOutgoingMessageExoplayerResize
   | EMOutgoingMessageExoplayerStop
+  | EMOutgoingMessageHaptic
+  | EMOutgoingMessageImportThreadCredentials
+  | EMOutgoingMessageMatterCommission
+  | EMOutgoingMessageSidebarShow
+  | EMOutgoingMessageTagWrite
   | EMOutgoingMessageThemeUpdate
-  | EMMessageResultSuccess
-  | EMMessageResultError
-  | EMOutgoingMessageMatterCommission;
+  | EMOutgoingMessageThreadStoreInPlatformKeychain
+  | EMOutgoingMessageImprovScan;
 
 interface EMIncomingMessageRestart {
   id: number;
@@ -142,11 +186,58 @@ interface EMIncomingMessageShowSidebar {
   command: "sidebar/show";
 }
 
+interface EMIncomingMessageShowAutomationEditor {
+  id: number;
+  type: "command";
+  command: "automation/editor/show";
+  payload?: {
+    config?: Partial<AutomationConfig>;
+  };
+}
+
+export interface EMIncomingMessageBarCodeScanResult {
+  id: number;
+  type: "command";
+  command: "bar_code/scan_result";
+  payload: {
+    // A string decoded from the barcode data.
+    rawValue: string;
+    // https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API#supported_barcode_formats
+    format:
+      | "aztec"
+      | "code_128"
+      | "code_39"
+      | "code_93"
+      | "codabar"
+      | "data_matrix"
+      | "ean_13"
+      | "ean_8"
+      | "itf"
+      | "pdf417"
+      | "qr_code"
+      | "upc_a"
+      | "upc_e"
+      | "unknown";
+  };
+}
+
+export interface EMIncomingMessageBarCodeScanAborted {
+  id: number;
+  type: "command";
+  command: "bar_code/aborted";
+  payload: {
+    reason: "canceled" | "alternative_options";
+  };
+}
+
 export type EMIncomingMessageCommands =
   | EMIncomingMessageRestart
   | EMIncomingMessageShowNotifications
   | EMIncomingMessageToggleSidebar
-  | EMIncomingMessageShowSidebar;
+  | EMIncomingMessageShowSidebar
+  | EMIncomingMessageShowAutomationEditor
+  | EMIncomingMessageBarCodeScanResult
+  | EMIncomingMessageBarCodeScanAborted;
 
 type EMIncomingMessage =
   | EMMessageResultSuccess
@@ -161,7 +252,11 @@ export interface ExternalConfig {
   canWriteTag: boolean;
   hasExoPlayer: boolean;
   canCommissionMatter: boolean;
+  canImportThreadCredentials: boolean;
+  canTransferThreadCredentialsToKeychain: boolean;
   hasAssist: boolean;
+  hasBarCodeScanner: number;
+  canSetupImprov: boolean;
 }
 
 export class ExternalMessaging {

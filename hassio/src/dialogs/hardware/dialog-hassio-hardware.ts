@@ -1,4 +1,5 @@
 import { mdiClose } from "@mdi/js";
+import { dump } from "js-yaml";
 import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
@@ -9,7 +10,6 @@ import "../../../../src/components/ha-expansion-panel";
 import "../../../../src/components/ha-icon-button";
 import "../../../../src/components/search-input";
 import { HassioHardwareInfo } from "../../../../src/data/hassio/hardware";
-import { dump } from "../../../../src/resources/js-yaml-dump";
 import { haStyle, haStyleDialog } from "../../../../src/resources/styles";
 import { HomeAssistant } from "../../../../src/types";
 import { HassioHardwareDialogParams } from "./show-dialog-hassio-hardware";
@@ -154,12 +154,16 @@ class HassioHardwareDialog extends LitElement {
         ha-icon-button {
           position: absolute;
           right: 16px;
+          inset-inline-end: 16px;
+          inset-inline-start: initial;
           top: 10px;
           text-decoration: none;
           color: var(--primary-text-color);
         }
         h2 {
           margin: 18px 42px 0 18px;
+          margin-inline-start: 18px;
+          margin-inline-end: 42px;
           color: var(--primary-text-color);
         }
 

@@ -34,7 +34,7 @@ export interface FlowConfig {
   renderAbortDescription(
     hass: HomeAssistant,
     step: DataEntryFlowStepAbort
-  ): TemplateResult | "";
+  ): TemplateResult | string;
 
   renderShowFormStepHeader(
     hass: HomeAssistant,
@@ -49,13 +49,15 @@ export interface FlowConfig {
   renderShowFormStepFieldLabel(
     hass: HomeAssistant,
     step: DataEntryFlowStepForm,
-    field: HaFormSchema
+    field: HaFormSchema,
+    options: { path?: string[]; [key: string]: any }
   ): string;
 
   renderShowFormStepFieldHelper(
     hass: HomeAssistant,
     step: DataEntryFlowStepForm,
-    field: HaFormSchema
+    field: HaFormSchema,
+    options: { path?: string[]; [key: string]: any }
   ): TemplateResult | string;
 
   renderShowFormStepFieldError(
@@ -139,6 +141,7 @@ export interface DataEntryFlowDialogParams {
   }) => void;
   flowConfig: FlowConfig;
   showAdvanced?: boolean;
+  entryId?: string;
   dialogParentElement?: HTMLElement;
 }
 

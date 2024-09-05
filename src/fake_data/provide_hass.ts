@@ -119,7 +119,8 @@ export const provideHass = (
       hass().localize,
       hass().locale,
       hass().config,
-      hass().entities
+      hass().entities,
+      [] // numericDeviceClasses
     );
     hass().updateHass({
       formatEntityState,
@@ -225,6 +226,7 @@ export const provideHass = (
       },
       suspendReconnectUntil: noop,
       suspend: noop,
+      ping: noop,
       socket: {
         readyState: WebSocket.OPEN,
       },
@@ -271,11 +273,14 @@ export const provideHass = (
     },
     dockedSidebar: "auto",
     vibrate: true,
+    debugConnection: false,
     suspendWhenHidden: false,
     moreInfoEntityId: null as any,
     // @ts-ignore
     async callService(domain, service, data) {
       if (data && "entity_id" in data) {
+        // eslint-disable-next-line
+        console.log("Entity service call", domain, service, data);
         await Promise.all(
           ensureArray(data.entity_id).map((ent) =>
             entities[ent].handleService(domain, service, data)
@@ -350,7 +355,7 @@ export const provideHass = (
       (state !== null ? state : stateObj.state) ?? "",
     formatEntityAttributeName: (_stateObj, attribute) => attribute,
     formatEntityAttributeValue: (stateObj, attribute, value) =>
-      value !== null ? value : stateObj.attributes[attribute] ?? "",
+      value !== null ? value : (stateObj.attributes[attribute] ?? ""),
     ...overrideData,
   };
 

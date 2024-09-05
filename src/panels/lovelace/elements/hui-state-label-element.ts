@@ -1,27 +1,58 @@
+import type { HassEntity } from "home-assistant-js-websocket";
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
   PropertyValues,
+  css,
+  html,
   nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
-import { computeStateDisplay } from "../../../common/entity/compute_state_display";
-import { ActionHandlerEvent } from "../../../data/lovelace";
+import { findEntities } from "../common/find-entities";
+import { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import { HomeAssistant } from "../../../types";
 import { computeTooltip } from "../common/compute-tooltip";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { handleAction } from "../common/handle-action";
 import { hasAction } from "../common/has-action";
+import { isUnavailableState } from "../../../data/entity";
 import { hasConfigOrEntityChanged } from "../common/has-changed";
 import { createEntityNotFoundWarning } from "../components/hui-warning";
 import "../components/hui-warning-element";
 import { LovelaceElement, StateLabelElementConfig } from "./types";
+import { LovelacePictureElementEditor } from "../types";
 
 @customElement("hui-state-label-element")
 class HuiStateLabelElement extends LitElement implements LovelaceElement {
+  public static async getConfigElement(): Promise<LovelacePictureElementEditor> {
+    await import(
+      "../editor/config-elements/elements/hui-state-label-element-editor"
+    );
+    return document.createElement("hui-state-label-element-editor");
+  }
+
+  public static getStubConfig(
+    hass: HomeAssistant,
+    entities: string[],
+    entitiesFallback: string[]
+  ): StateLabelElementConfig {
+    const includeDomains = ["light", "switch", "sensor"];
+    const maxEntities = 1;
+    const entityFilter = (stateObj: HassEntity): boolean =>
+      !isUnavailableState(stateObj.state);
+    const foundEntities = findEntities(
+      hass,
+      maxEntities,
+      entities,
+      entitiesFallback,
+      includeDomains,
+      entityFilter
+    );
+
+    return { type: "state-label", entity: foundEntities[0] || "" };
+  }
+
   @property({ attribute: false }) public hass?: HomeAssistant;
 
   @state() private _config?: StateLabelElementConfig;
@@ -48,7 +79,7 @@ class HuiStateLabelElement extends LitElement implements LovelaceElement {
     if (!stateObj) {
       return html`
         <hui-warning-element
-          .label=${createEntityNotFoundWarning(this.hass, this._config.entity)}
+          .label=${createEntityNotFoundWarning(this.hass, this._config.entity!)}
         ></hui-warning-element>
       `;
     }
@@ -61,10 +92,7 @@ class HuiStateLabelElement extends LitElement implements LovelaceElement {
         <hui-warning-element
           label=${this.hass.localize(
             "ui.panel.lovelace.warning.attribute_not_found",
-            "attribute",
-            this._config.attribute,
-            "entity",
-            this._config.entity
+            { attribute: this._config.attribute, entity: this._config.entity }
           )}
         ></hui-warning-element>
       `;
@@ -83,13 +111,7 @@ class HuiStateLabelElement extends LitElement implements LovelaceElement {
         )}
       >
         ${this._config.prefix}${!this._config.attribute
-          ? computeStateDisplay(
-              this.hass.localize,
-              stateObj,
-              this.hass.locale,
-              this.hass.config,
-              this.hass.entities
-            )
+          ? this.hass.formatEntityState(stateObj)
           : stateObj.attributes[this._config.attribute]}${this._config.suffix}
       </div>
     `;

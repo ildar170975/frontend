@@ -9,6 +9,7 @@ import { mockEntityRegistry } from "../../../../demo/src/stubs/entity_registry";
 import { mockHassioSupervisor } from "../../../../demo/src/stubs/hassio_supervisor";
 import "../../../../src/components/ha-selector/ha-selector";
 import "../../../../src/components/ha-settings-row";
+import type { AreaRegistryEntry } from "../../../../src/data/area_registry";
 import { BlueprintInput } from "../../../../src/data/blueprint";
 import { showDialog } from "../../../../src/dialogs/make-dialog-manager";
 import { getEntity } from "../../../../src/fake_data/entity";
@@ -16,6 +17,11 @@ import { provideHass } from "../../../../src/fake_data/provide_hass";
 import { ProvideHassElement } from "../../../../src/mixins/provide-hass-lit-mixin";
 import type { HomeAssistant } from "../../../../src/types";
 import "../../components/demo-black-white-row";
+import { FloorRegistryEntry } from "../../../../src/data/floor_registry";
+import { LabelRegistryEntry } from "../../../../src/data/label_registry";
+import { mockFloorRegistry } from "../../../../demo/src/stubs/floor_registry";
+import { mockLabelRegistry } from "../../../../demo/src/stubs/label_registry";
+import { DeviceRegistryEntry } from "../../../../src/data/device_registry";
 
 const ENTITIES = [
   getEntity("alarm_control_panel", "alarm", "disarmed", {
@@ -36,7 +42,7 @@ const ENTITIES = [
   }),
 ];
 
-const DEVICES = [
+const DEVICES: DeviceRegistryEntry[] = [
   {
     area_id: "bedroom",
     configuration_url: null,
@@ -48,11 +54,16 @@ const DEVICES = [
     identifiers: [["demo", "volume1"] as [string, string]],
     manufacturer: null,
     model: null,
+    model_id: null,
     name_by_user: null,
     name: "Dishwasher",
     sw_version: null,
     hw_version: null,
     via_device_id: null,
+    serial_number: null,
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: "backyard",
@@ -65,11 +76,16 @@ const DEVICES = [
     identifiers: [["demo", "pwm1"] as [string, string]],
     manufacturer: null,
     model: null,
+    model_id: null,
     name_by_user: null,
     name: "Lamp",
     sw_version: null,
     hw_version: null,
     via_device_id: null,
+    serial_number: null,
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: null,
@@ -82,32 +98,103 @@ const DEVICES = [
     identifiers: [["demo", "pwm1"] as [string, string]],
     manufacturer: null,
     model: null,
+    model_id: null,
     name_by_user: "User name",
     name: "Technical name",
     sw_version: null,
     hw_version: null,
     via_device_id: null,
+    serial_number: null,
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
 ];
 
-const AREAS = [
+const AREAS: AreaRegistryEntry[] = [
   {
     area_id: "backyard",
+    floor_id: "ground",
     name: "Backyard",
+    icon: null,
     picture: null,
     aliases: [],
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: "bedroom",
+    floor_id: "first",
     name: "Bedroom",
+    icon: "mdi:bed",
     picture: null,
     aliases: [],
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: "livingroom",
+    floor_id: "ground",
     name: "Livingroom",
+    icon: "mdi:sofa",
     picture: null,
     aliases: [],
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
+  },
+];
+
+const FLOORS: FloorRegistryEntry[] = [
+  {
+    floor_id: "ground",
+    name: "Ground floor",
+    level: 0,
+    icon: null,
+    aliases: [],
+    created_at: 0,
+    modified_at: 0,
+  },
+  {
+    floor_id: "first",
+    name: "First floor",
+    level: 1,
+    icon: "mdi:numeric-1",
+    aliases: [],
+    created_at: 0,
+    modified_at: 0,
+  },
+  {
+    floor_id: "second",
+    name: "Second floor",
+    level: 2,
+    icon: "mdi:numeric-2",
+    aliases: [],
+    created_at: 0,
+    modified_at: 0,
+  },
+];
+
+const LABELS: LabelRegistryEntry[] = [
+  {
+    label_id: "energy",
+    name: "Energy",
+    icon: null,
+    color: "yellow",
+    description: null,
+    created_at: 0,
+    modified_at: 0,
+  },
+  {
+    label_id: "entertainment",
+    name: "Entertainment",
+    icon: "mdi:popcorn",
+    color: "blue",
+    description: null,
+    created_at: 0,
+    modified_at: 0,
   },
 ];
 
@@ -118,7 +205,12 @@ const SCHEMAS: {
   {
     name: "One of each",
     input: {
+      label: { name: "Label", selector: { label: {} } },
+      floor: { name: "Floor", selector: { floor: {} } },
+      area: { name: "Area", selector: { area: {} } },
+      device: { name: "Device", selector: { device: {} } },
       entity: { name: "Entity", selector: { entity: {} } },
+      target: { name: "Target", selector: { target: {} } },
       state: {
         name: "State",
         selector: { state: { entity_id: "alarm_control_panel.alarm" } },
@@ -127,15 +219,12 @@ const SCHEMAS: {
         name: "Attribute",
         selector: { attribute: { entity_id: "" } },
       },
-      device: { name: "Device", selector: { device: {} } },
       config_entry: {
         name: "Integration",
         selector: { config_entry: {} },
       },
       duration: { name: "Duration", selector: { duration: {} } },
       addon: { name: "Addon", selector: { addon: {} } },
-      area: { name: "Area", selector: { area: {} } },
-      target: { name: "Target", selector: { target: {} } },
       number_box: {
         name: "Number Box",
         selector: {
@@ -268,6 +357,14 @@ const SCHEMAS: {
         selector: { color_temp: {} },
       },
       color_rgb: { name: "Color", selector: { color_rgb: {} } },
+      qr_code: {
+        name: "QR Code",
+        selector: { qr_code: { data: "https://home-assistant.io" } },
+      },
+      constant: {
+        name: "Constant",
+        selector: { constant: { value: true, label: "Yes!" } },
+      },
     },
   },
   {
@@ -276,6 +373,8 @@ const SCHEMAS: {
       entity: { name: "Entity", selector: { entity: { multiple: true } } },
       device: { name: "Device", selector: { device: { multiple: true } } },
       area: { name: "Area", selector: { area: { multiple: true } } },
+      floor: { name: "Floor", selector: { floor: { multiple: true } } },
+      label: { name: "Label", selector: { label: { multiple: true } } },
       select: {
         name: "Select Multiple",
         selector: {
@@ -332,6 +431,8 @@ class DemoHaSelector extends LitElement implements ProvideHassElement {
     mockDeviceRegistry(hass, DEVICES);
     mockConfigEntries(hass);
     mockAreaRegistry(hass, AREAS);
+    mockFloorRegistry(hass, FLOORS);
+    mockLabelRegistry(hass, LABELS);
     mockHassioSupervisor(hass);
     hass.mockWS("auth/sign_path", (params) => params);
     hass.mockWS("media_player/browse_media", this._browseMedia);
@@ -494,7 +595,7 @@ class DemoHaSelector extends LitElement implements ProvideHassElement {
           this.requestUpdate();
         };
         return html`
-          <demo-black-white-row .title=${info.name} .value=${this.data[idx]}>
+          <demo-black-white-row .title=${info.name}>
             ${["light", "dark"].map((slot) =>
               Object.entries(info.input).map(
                 ([key, value]) => html`
@@ -527,8 +628,8 @@ class DemoHaSelector extends LitElement implements ProvideHassElement {
   }
 
   static styles = css`
-    ha-selector {
-      width: 60;
+    ha-settings-row {
+      --paper-item-body-two-line-min-height: 0;
     }
     .options {
       max-width: 800px;

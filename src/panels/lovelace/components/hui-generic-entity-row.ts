@@ -1,33 +1,33 @@
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
   PropertyValues,
+  css,
+  html,
   nothing,
 } from "lit";
-import { property } from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { ifDefined } from "lit/directives/if-defined";
 import { DOMAINS_INPUT_ROW } from "../../../common/const";
 import { toggleAttribute } from "../../../common/dom/toggle_attribute";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { computeStateName } from "../../../common/entity/compute_state_name";
-import { computeRTL } from "../../../common/util/compute_rtl";
 import "../../../components/entity/state-badge";
 import "../../../components/ha-relative-time";
-import { ActionHandlerEvent } from "../../../data/lovelace";
+import { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import { HomeAssistant } from "../../../types";
 import { EntitiesCardEntityConfig } from "../cards/types";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { handleAction } from "../common/handle-action";
-import { hasAction } from "../common/has-action";
+import { hasAction, hasAnyAction } from "../common/has-action";
 import { createEntityNotFoundWarning } from "./hui-warning";
 
-class HuiGenericEntityRow extends LitElement {
+@customElement("hui-generic-entity-row")
+export class HuiGenericEntityRow extends LitElement {
   @property({ attribute: false }) public hass?: HomeAssistant;
 
-  @property() public config?: EntitiesCardEntityConfig;
+  @property({ attribute: false }) public config?: EntitiesCardEntityConfig;
 
   @property() public secondaryText?: string;
 
@@ -60,9 +60,7 @@ class HuiGenericEntityRow extends LitElement {
     // By default, we always show a pointer, since if there is no explicit configuration provided,
     // the frontend always assumes "more-info" in the action handler. We only need to hide the pointer
     // if the tap action is explicitly set to "none".
-    const pointer = !(
-      this.config.tap_action && this.config.tap_action.action === "none"
-    );
+    const pointer = hasAnyAction(this.config);
 
     const hasSecondary = this.secondaryText || this.config.secondary_info;
     const name = this.config.name ?? computeStateName(stateObj);
@@ -82,7 +80,11 @@ class HuiGenericEntityRow extends LitElement {
           hasHold: hasAction(this.config!.hold_action),
           hasDoubleClick: hasAction(this.config!.double_tap_action),
         })}
-        tabindex=${ifDefined(pointer ? "0" : undefined)}
+        tabindex=${ifDefined(
+          !this.config.tap_action || hasAction(this.config.tap_action)
+            ? "0"
+            : undefined
+        )}
       ></state-badge>
       ${!this.hideName
         ? html`<div
@@ -105,56 +107,63 @@ class HuiGenericEntityRow extends LitElement {
                     (this.config.secondary_info === "entity-id"
                       ? stateObj.entity_id
                       : this.config.secondary_info === "last-changed"
-                      ? html`
-                          <ha-relative-time
-                            .hass=${this.hass}
-                            .datetime=${stateObj.last_changed}
-                            capitalize
-                          ></ha-relative-time>
-                        `
-                      : this.config.secondary_info === "last-updated"
-                      ? html`
-                          <ha-relative-time
-                            .hass=${this.hass}
-                            .datetime=${stateObj.last_updated}
-                            capitalize
-                          ></ha-relative-time>
-                        `
-                      : this.config.secondary_info === "last-triggered"
-                      ? stateObj.attributes.last_triggered
                         ? html`
                             <ha-relative-time
                               .hass=${this.hass}
-                              .datetime=${stateObj.attributes.last_triggered}
+                              .datetime=${stateObj.last_changed}
                               capitalize
                             ></ha-relative-time>
                           `
-                        : this.hass.localize(
-                            "ui.panel.lovelace.cards.entities.never_triggered"
-                          )
-                      : this.config.secondary_info === "position" &&
-                        stateObj.attributes.current_position !== undefined
-                      ? `${this.hass.localize("ui.card.cover.position")}: ${
-                          stateObj.attributes.current_position
-                        }`
-                      : this.config.secondary_info === "tilt-position" &&
-                        stateObj.attributes.current_tilt_position !== undefined
-                      ? `${this.hass.localize(
-                          "ui.card.cover.tilt_position"
-                        )}: ${stateObj.attributes.current_tilt_position}`
-                      : this.config.secondary_info === "brightness" &&
-                        stateObj.attributes.brightness
-                      ? html`${Math.round(
-                          (stateObj.attributes.brightness / 255) * 100
-                        )}
-                        %`
-                      : "")}
+                        : this.config.secondary_info === "last-updated"
+                          ? html`
+                              <ha-relative-time
+                                .hass=${this.hass}
+                                .datetime=${stateObj.last_updated}
+                                capitalize
+                              ></ha-relative-time>
+                            `
+                          : this.config.secondary_info === "last-triggered"
+                            ? stateObj.attributes.last_triggered
+                              ? html`
+                                  <ha-relative-time
+                                    .hass=${this.hass}
+                                    .datetime=${stateObj.attributes
+                                      .last_triggered}
+                                    capitalize
+                                  ></ha-relative-time>
+                                `
+                              : this.hass.localize(
+                                  "ui.panel.lovelace.cards.entities.never_triggered"
+                                )
+                            : this.config.secondary_info === "position" &&
+                                stateObj.attributes.current_position !==
+                                  undefined
+                              ? `${this.hass.localize(
+                                  "ui.card.cover.position"
+                                )}: ${stateObj.attributes.current_position}`
+                              : this.config.secondary_info ===
+                                    "tilt-position" &&
+                                  stateObj.attributes.current_tilt_position !==
+                                    undefined
+                                ? `${this.hass.localize(
+                                    "ui.card.cover.tilt_position"
+                                  )}: ${
+                                    stateObj.attributes.current_tilt_position
+                                  }`
+                                : this.config.secondary_info === "brightness" &&
+                                    stateObj.attributes.brightness
+                                  ? html`${Math.round(
+                                      (stateObj.attributes.brightness / 255) *
+                                        100
+                                    )}
+                                    %`
+                                  : "")}
                   </div>
                 `
               : ""}
           </div>`
         : nothing}
-      ${this.catchInteraction ?? !DOMAINS_INPUT_ROW.includes(domain)
+      ${(this.catchInteraction ?? !DOMAINS_INPUT_ROW.includes(domain))
         ? html`<div
             class="text-content value ${classMap({
               pointer,
@@ -178,9 +187,6 @@ class HuiGenericEntityRow extends LitElement {
       "no-secondary",
       !this.secondaryText && !this.config?.secondary_info
     );
-    if (changedProps.has("hass")) {
-      toggleAttribute(this, "rtl", computeRTL(this.hass!));
-    }
   }
 
   private _handleAction(ev: ActionHandlerEvent) {
@@ -197,6 +203,8 @@ class HuiGenericEntityRow extends LitElement {
       .info {
         margin-left: 16px;
         margin-right: 8px;
+        margin-inline-start: 16px;
+        margin-inline-end: 8px;
         flex: 1 1 30%;
       }
       .info,
@@ -207,10 +215,14 @@ class HuiGenericEntityRow extends LitElement {
       }
       .flex ::slotted(*) {
         margin-left: 8px;
+        margin-inline-start: 8px;
+        margin-inline-end: initial;
         min-width: 0;
       }
       .flex ::slotted([slot="secondary"]) {
         margin-left: 0;
+        margin-inline-start: 0;
+        margin-inline-end: initial;
       }
       .secondary,
       ha-relative-time {
@@ -219,22 +231,11 @@ class HuiGenericEntityRow extends LitElement {
       state-badge {
         flex: 0 0 40px;
       }
-      :host([rtl]) .flex {
-        margin-left: 0;
-        margin-right: 16px;
-      }
-      :host([rtl]) .flex ::slotted(*) {
-        margin-left: 0;
-        margin-right: 8px;
-      }
       .pointer {
         cursor: pointer;
       }
       .state {
-        text-align: right;
-      }
-      .state.rtl {
-        text-align: left;
+        text-align: var(--float-end);
       }
       .value {
         direction: ltr;
@@ -242,4 +243,9 @@ class HuiGenericEntityRow extends LitElement {
     `;
   }
 }
-customElements.define("hui-generic-entity-row", HuiGenericEntityRow);
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "hui-generic-entity-row": HuiGenericEntityRow;
+  }
+}

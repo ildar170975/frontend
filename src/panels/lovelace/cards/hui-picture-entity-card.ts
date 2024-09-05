@@ -1,21 +1,20 @@
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
   PropertyValues,
   TemplateResult,
+  css,
+  html,
   nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
 import { applyThemesOnElement } from "../../../common/dom/apply_themes_on_element";
 import { computeDomain } from "../../../common/entity/compute_domain";
-import { computeStateDisplay } from "../../../common/entity/compute_state_display";
 import { computeStateName } from "../../../common/entity/compute_state_name";
 import "../../../components/ha-card";
-import { computeImageUrl, ImageEntity } from "../../../data/image";
-import { ActionHandlerEvent } from "../../../data/lovelace";
+import { ImageEntity, computeImageUrl } from "../../../data/image";
+import { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import { HomeAssistant } from "../../../types";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { findEntities } from "../common/find-entities";
@@ -26,6 +25,8 @@ import "../components/hui-image";
 import { createEntityNotFoundWarning } from "../components/hui-warning";
 import { LovelaceCard, LovelaceCardEditor } from "../types";
 import { PictureEntityCardConfig } from "./types";
+import { CameraEntity } from "../../../data/camera";
+import { PersonEntity } from "../../../data/person";
 
 @customElement("hui-picture-entity-card")
 class HuiPictureEntityCard extends LitElement implements LovelaceCard {
@@ -69,7 +70,7 @@ class HuiPictureEntityCard extends LitElement implements LovelaceCard {
     }
 
     if (
-      !["camera", "image"].includes(computeDomain(config.entity)) &&
+      !["camera", "image", "person"].includes(computeDomain(config.entity)) &&
       !config.image &&
       !config.state_image &&
       !config.camera_image
@@ -109,7 +110,8 @@ class HuiPictureEntityCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
-    const stateObj = this.hass.states[this._config.entity];
+    const stateObj: CameraEntity | ImageEntity | PersonEntity | undefined =
+      this.hass.states[this._config.entity];
 
     if (!stateObj) {
       return html`
@@ -120,13 +122,7 @@ class HuiPictureEntityCard extends LitElement implements LovelaceCard {
     }
 
     const name = this._config.name || computeStateName(stateObj);
-    const entityState = computeStateDisplay(
-      this.hass!.localize,
-      stateObj,
-      this.hass.locale,
-      this.hass.config,
-      this.hass.entities
-    );
+    const entityState = this.hass.formatEntityState(stateObj);
 
     let footer: TemplateResult | string = "";
     if (this._config.show_name && this._config.show_state) {
@@ -142,15 +138,24 @@ class HuiPictureEntityCard extends LitElement implements LovelaceCard {
       footer = html`<div class="footer single">${entityState}</div>`;
     }
 
-    const domain = computeDomain(this._config.entity);
+    const domain: string = computeDomain(this._config.entity);
+    let image: string | undefined = this._config.image;
+    switch (domain) {
+      case "image":
+        image = computeImageUrl(stateObj as ImageEntity);
+        break;
+      case "person":
+        if ((stateObj as PersonEntity).attributes.entity_picture) {
+          image = (stateObj as PersonEntity).attributes.entity_picture;
+        }
+        break;
+    }
 
     return html`
       <ha-card>
         <hui-image
           .hass=${this.hass}
-          .image=${domain === "image"
-            ? computeImageUrl(stateObj as ImageEntity)
-            : this._config.image}
+          .image=${image}
           .stateImage=${this._config.state_image}
           .stateFilter=${this._config.state_filter}
           .cameraImage=${domain === "camera"
@@ -159,6 +164,7 @@ class HuiPictureEntityCard extends LitElement implements LovelaceCard {
           .cameraView=${this._config.camera_view}
           .entity=${this._config.entity}
           .aspectRatio=${this._config.aspect_ratio}
+          .fitMode=${this._config.fit_mode}
           @action=${this._handleAction}
           .actionHandler=${actionHandler({
             hasHold: hasAction(this._config!.hold_action),
@@ -187,6 +193,7 @@ class HuiPictureEntityCard extends LitElement implements LovelaceCard {
 
       hui-image {
         cursor: pointer;
+        height: 100%;
       }
 
       .footer {

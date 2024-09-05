@@ -1,8 +1,16 @@
-import { html, LitElement, nothing } from "lit";
+import {
+  CSSResultGroup,
+  LitElement,
+  PropertyValues,
+  css,
+  html,
+  nothing,
+} from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { HomeAssistant } from "../../../../types";
+import { hasConfigChanged } from "../../common/has-changed";
 import "../../components/hui-energy-period-selector";
-import { LovelaceCard } from "../../types";
+import { LovelaceCard, LovelaceLayoutOptions } from "../../types";
 import { EnergyCardBaseConfig } from "../types";
 
 @customElement("hui-energy-date-selection-card")
@@ -18,8 +26,23 @@ export class HuiEnergyDateSelectionCard
     return 1;
   }
 
+  public getLayoutOptions(): LovelaceLayoutOptions {
+    return {
+      grid_rows: 1,
+      grid_columns: 4,
+    };
+  }
+
   public setConfig(config: EnergyCardBaseConfig): void {
     this._config = config;
+  }
+
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    return (
+      hasConfigChanged(this, changedProps) ||
+      changedProps.size > 1 ||
+      !changedProps.has("hass")
+    );
   }
 
   protected render() {
@@ -28,10 +51,31 @@ export class HuiEnergyDateSelectionCard
     }
 
     return html`
-      <hui-energy-period-selector
-        .hass=${this.hass}
-        .collectionKey=${this._config.collection_key}
-      ></hui-energy-period-selector>
+      <ha-card>
+        <div class="card-content">
+          <hui-energy-period-selector
+            .hass=${this.hass}
+            .collectionKey=${this._config.collection_key}
+          ></hui-energy-period-selector>
+        </div>
+      </ha-card>
+    `;
+  }
+
+  static get styles(): CSSResultGroup {
+    return css`
+    :host {
+      ha-card {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+      .padded {
+        padding-left: 16px !important;
+        padding-inline-start: 16px !important;
+        padding-inline-end: initial !important;
+      }
     `;
   }
 }

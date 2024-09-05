@@ -5,6 +5,7 @@ import {
   LitElement,
   nothing,
   PropertyValues,
+  TemplateResult,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
@@ -17,7 +18,7 @@ import "./ha-svg-icon";
 export type ControlSelectOption = {
   value: string;
   label?: string;
-  icon?: string;
+  icon?: TemplateResult;
   path?: string;
 };
 
@@ -25,7 +26,7 @@ export type ControlSelectOption = {
 export class HaControlSelect extends LitElement {
   @property({ type: Boolean, reflect: true }) disabled = false;
 
-  @property() public options?: ControlSelectOption[];
+  @property({ attribute: false }) public options?: ControlSelectOption[];
 
   @property() public value?: string;
 
@@ -183,9 +184,7 @@ export class HaControlSelect extends LitElement {
         <div class="content">
           ${option.path
             ? html`<ha-svg-icon .path=${option.path}></ha-svg-icon>`
-            : option.icon
-            ? html`<ha-icon .icon=${option.icon}></ha-icon> `
-            : nothing}
+            : option.icon || nothing}
           ${option.label && !this.hideLabel
             ? html`<span>${option.label}</span>`
             : nothing}
@@ -217,6 +216,7 @@ export class HaControlSelect extends LitElement {
         transition: box-shadow 180ms ease-in-out;
         font-style: normal;
         font-weight: 500;
+        color: var(--primary-text-color);
         user-select: none;
         -webkit-tap-highlight-color: transparent;
       }
@@ -267,7 +267,6 @@ export class HaControlSelect extends LitElement {
         justify-content: center;
         border-radius: var(--control-select-button-border-radius);
         overflow: hidden;
-        color: var(--primary-text-color);
         /* For safari border-radius overflow */
         z-index: 0;
       }
@@ -331,6 +330,7 @@ export class HaControlSelect extends LitElement {
       :host([disabled]) {
         --control-select-color: var(--disabled-color);
         --control-select-focused-opacity: 0;
+        color: var(--disabled-color);
       }
       :host([disabled]) .option {
         cursor: not-allowed;

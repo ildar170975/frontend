@@ -4,6 +4,7 @@ import { customElement, property, state } from "lit/decorators";
 import { formatDateNumeric } from "../../../common/datetime/format_date";
 import { fireEvent } from "../../../common/dom/fire_event";
 import { isNavigationClick } from "../../../common/dom/is-navigation-click";
+import "../../../components/ha-alert";
 import { createCloseHeading } from "../../../components/ha-dialog";
 import "../../../components/ha-markdown";
 import { ignoreRepairsIssue, RepairsIssue } from "../../../data/repairs";
@@ -78,7 +79,8 @@ class DialogRepairsIssue extends LitElement {
                 this._issue.translation_key || this._issue.issue_id
               }.description`,
               this._issue.translation_placeholders
-            )}
+            ) ||
+            `${this._issue.domain}: ${this._issue.translation_key || this._issue.issue_id}`}
           ></ha-markdown>
           ${this._issue.dismissed_version
             ? html`

@@ -5,14 +5,12 @@ import {
   DOMAINS_WITH_DYNAMIC_PICTURE,
 } from "../common/const";
 import { computeDomain } from "../common/entity/compute_domain";
-import { computeStateDisplay } from "../common/entity/compute_state_display";
 import { computeStateDomain } from "../common/entity/compute_state_domain";
 import { autoCaseNoun } from "../common/translations/auto_case_noun";
 import { LocalizeFunc } from "../common/translations/localize";
 import { HaEntityPickerEntityFilterFunc } from "../components/entity/ha-entity-picker";
 import { HomeAssistant } from "../types";
 import { UNAVAILABLE, UNKNOWN } from "./entity";
-import { computeAttributeValueDisplay } from "../common/entity/compute_attribute_display";
 
 const LOGBOOK_LOCALIZE_PATH = "ui.components.logbook.messages";
 export const CONTINUOUS_DOMAINS = ["counter", "proximity", "sensor", "zone"];
@@ -196,7 +194,7 @@ export const localizeStateMessage = (
       if (state === "home") {
         return localize(`${LOGBOOK_LOCALIZE_PATH}.was_at_home`);
       }
-      return localize(`${LOGBOOK_LOCALIZE_PATH}.was_at_state`, "state", state);
+      return localize(`${LOGBOOK_LOCALIZE_PATH}.was_at_state`, { state });
 
     case "sun":
       return state === "above_horizon"
@@ -339,14 +337,9 @@ export const localizeStateMessage = (
 
       // TODO: This is not working yet, as we don't get historic attribute values
 
-      const event_type = computeAttributeValueDisplay(
-        hass!.localize,
-        stateObj,
-        hass.locale,
-        hass.config,
-        hass.entities,
-        "event_type"
-      )?.toString();
+      const event_type = hass
+        .formatEntityAttributeValue(stateObj, "event_type")
+        ?.toString();
 
       if (!event_type) {
         return localize(`${LOGBOOK_LOCALIZE_PATH}.detected_unknown_event`);
@@ -365,6 +358,10 @@ export const localizeStateMessage = (
           return localize(`${LOGBOOK_LOCALIZE_PATH}.is_locking`);
         case "unlocking":
           return localize(`${LOGBOOK_LOCALIZE_PATH}.is_unlocking`);
+        case "opening":
+          return localize(`${LOGBOOK_LOCALIZE_PATH}.is_opening`);
+        case "open":
+          return localize(`${LOGBOOK_LOCALIZE_PATH}.is_opened`);
         case "locked":
           return localize(`${LOGBOOK_LOCALIZE_PATH}.was_locked`);
         case "jammed":
@@ -389,20 +386,9 @@ export const localizeStateMessage = (
     return localize(`${LOGBOOK_LOCALIZE_PATH}.became_unavailable`);
   }
 
-  return hass.localize(
-    `${LOGBOOK_LOCALIZE_PATH}.changed_to_state`,
-    "state",
-    stateObj
-      ? computeStateDisplay(
-          localize,
-          stateObj,
-          hass.locale,
-          hass.config,
-          hass.entities,
-          state
-        )
-      : state
-  );
+  return hass.localize(`${LOGBOOK_LOCALIZE_PATH}.changed_to_state`, {
+    state: stateObj ? hass.formatEntityState(stateObj, state) : state,
+  });
 };
 
 export const filterLogbookCompatibleEntities: HaEntityPickerEntityFilterFunc = (

@@ -6,7 +6,7 @@ import {
   PropertyValues,
   nothing,
 } from "lit";
-import { customElement, property, query, state } from "lit/decorators";
+import { customElement, property, state } from "lit/decorators";
 import { getColorByIndex } from "../../../common/color/colors";
 import { applyThemesOnElement } from "../../../common/dom/apply_themes_on_element";
 import { HASSDomEvent } from "../../../common/dom/fire_event";
@@ -24,9 +24,7 @@ import type {
   HomeAssistant,
 } from "../../../types";
 import "../../calendar/ha-full-calendar";
-import type { HAFullCalendar } from "../../calendar/ha-full-calendar";
 import { findEntities } from "../common/find-entities";
-import { loadPolyfillIfNeeded } from "../../../resources/resize-observer.polyfill";
 import "../components/hui-warning";
 import type { LovelaceCard, LovelaceCardEditor } from "../types";
 import type { CalendarCardConfig } from "./types";
@@ -60,7 +58,7 @@ export class HuiCalendarCard extends LitElement implements LovelaceCard {
 
   @property({ attribute: false }) public hass?: HomeAssistant;
 
-  @property({ attribute: false }) public _events: CalendarEvent[] = [];
+  @state() private _events: CalendarEvent[] = [];
 
   @state() private _config?: CalendarCardConfig;
 
@@ -70,11 +68,7 @@ export class HuiCalendarCard extends LitElement implements LovelaceCard {
 
   @state() private _narrow = false;
 
-  @state() private _veryNarrow = false;
-
   @state() private _error?: string = undefined;
-
-  @query("ha-full-calendar", true) private _calendar?: HAFullCalendar;
 
   private _startDate?: Date;
 
@@ -124,9 +118,11 @@ export class HuiCalendarCard extends LitElement implements LovelaceCard {
       return nothing;
     }
 
-    const views: FullCalendarView[] = this._veryNarrow
-      ? ["listWeek"]
-      : ["dayGridMonth", "dayGridDay", "listWeek"];
+    const views: FullCalendarView[] = [
+      "dayGridMonth",
+      "dayGridDay",
+      "listWeek",
+    ];
 
     return html`
       <ha-card>
@@ -209,14 +205,10 @@ export class HuiCalendarCard extends LitElement implements LovelaceCard {
       return;
     }
     this._narrow = card.offsetWidth < 870;
-    this._veryNarrow = card.offsetWidth < 350;
-
-    this._calendar?.updateSize();
   }
 
   private async _attachObserver(): Promise<void> {
     if (!this._resizeObserver) {
-      await loadPolyfillIfNeeded();
       this._resizeObserver = new ResizeObserver(
         debounce(() => this._measureCard(), 250, false)
       );
@@ -246,6 +238,10 @@ export class HuiCalendarCard extends LitElement implements LovelaceCard {
         padding-left: 8px;
         padding-inline-start: 8px;
         direction: var(--direction);
+      }
+
+      ha-full-calendar {
+        --calendar-height: 400px;
       }
     `;
   }

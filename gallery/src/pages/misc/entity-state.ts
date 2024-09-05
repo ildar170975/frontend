@@ -10,8 +10,8 @@ import { computeStateDisplay } from "../../../../src/common/entity/compute_state
 import "../../../../src/components/data-table/ha-data-table";
 import type { DataTableColumnContainer } from "../../../../src/components/data-table/ha-data-table";
 import "../../../../src/components/entity/state-badge";
-import "../../../../src/components/ha-chip";
 import { provideHass } from "../../../../src/fake_data/provide_hass";
+import { mockIcons } from "../../../../demo/src/stubs/icons";
 import { HomeAssistant } from "../../../../src/types";
 
 const SENSOR_DEVICE_CLASSES = [
@@ -54,6 +54,7 @@ const SENSOR_DEVICE_CLASSES = [
   "volatile_organic_compounds_parts",
   "voltage",
   "volume",
+  "volume_flow_rate",
   "water",
   "weight",
   "wind_speed",
@@ -138,6 +139,9 @@ const ENTITIES: HassEntity[] = [
   createEntity("climate.auto_off", "auto", undefined, { hvac_action: "off" }),
   createEntity("climate.auto_preheating", "auto", undefined, {
     hvac_action: "preheating",
+  }),
+  createEntity("climate.auto_defrosting", "auto", undefined, {
+    hvac_action: "defrosting",
   }),
   createEntity("climate.auto_heating", "auto", undefined, {
     hvac_action: "heating",
@@ -291,6 +295,7 @@ const ENTITIES: HassEntity[] = [
   createEntity("water_heater.high_demand", "high_demand"),
   createEntity("water_heater.heat_pump", "heat_pump"),
   createEntity("water_heater.gas", "gas"),
+  createEntity("select.speed", "ridiculous_speed"),
 ];
 
 function createEntity(
@@ -343,8 +348,9 @@ export class DemoEntityState extends LitElement {
       const columns: DataTableColumnContainer<EntityRowData> = {
         icon: {
           title: "Icon",
-          template: (_, entry) => html`
+          template: (entry) => html`
             <state-badge
+              .hass=${hass}
               .stateObj=${entry.stateObj}
               .stateColor=${true}
             ></state-badge>
@@ -352,34 +358,31 @@ export class DemoEntityState extends LitElement {
         },
         entity_id: {
           title: "Entity ID",
-          width: "30%",
           filterable: true,
           sortable: true,
         },
         state: {
           title: "State",
-          width: "20%",
           sortable: true,
-          template: (_, entry) =>
+          template: (entry) =>
             html`${computeStateDisplay(
               hass.localize,
               entry.stateObj,
               hass.locale,
+              [], // numericDeviceClasses
               hass.config,
               hass.entities
             )}`,
         },
         device_class: {
           title: "Device class",
-          template: (dc) => html`${dc ?? "-"}`,
-          width: "20%",
+          template: (entry) => html`${entry.device_class ?? "-"}`,
           filterable: true,
           sortable: true,
         },
         domain: {
           title: "Domain",
-          template: (_, entry) => html`${computeDomain(entry.entity_id)}`,
-          width: "20%",
+          template: (entry) => html`${computeDomain(entry.entity_id)}`,
           filterable: true,
           sortable: true,
         },
@@ -396,6 +399,17 @@ export class DemoEntityState extends LitElement {
   protected firstUpdated(changedProps) {
     super.firstUpdated(changedProps);
     const hass = provideHass(this);
+    mockIcons(hass);
+    hass.updateHass({
+      entities: {
+        "select.speed": {
+          entity_id: "select.speed",
+          translation_key: "speed",
+          platform: "demo",
+          labels: [],
+        },
+      },
+    });
     hass.updateTranslations(null, "en");
     hass.updateTranslations("config", "en");
   }

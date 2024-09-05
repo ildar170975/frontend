@@ -12,7 +12,6 @@ import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../common/dom/fire_event";
 import { stopPropagation } from "../common/dom/stop_propagation";
-import { CodeMirror, loadCodeMirror } from "../resources/codemirror.ondemand";
 import { HomeAssistant } from "../types";
 import "./ha-icon";
 
@@ -48,6 +47,8 @@ export class HaCodeEditor extends ReactiveElement {
 
   @property({ type: Boolean }) public readOnly = false;
 
+  @property({ type: Boolean }) public linewrap = false;
+
   @property({ type: Boolean, attribute: "autocomplete-entities" })
   public autocompleteEntities = false;
 
@@ -58,7 +59,7 @@ export class HaCodeEditor extends ReactiveElement {
 
   @state() private _value = "";
 
-  private _loadedCodeMirror?: CodeMirror;
+  private _loadedCodeMirror?: typeof import("../resources/codemirror");
 
   private _iconList?: Completion[];
 
@@ -110,7 +111,7 @@ export class HaCodeEditor extends ReactiveElement {
 
   // Ensure CodeMirror module is loaded before any update
   protected override async scheduleUpdate() {
-    this._loadedCodeMirror ??= await loadCodeMirror();
+    this._loadedCodeMirror ??= await import("../resources/codemirror");
     super.scheduleUpdate();
   }
 
@@ -132,6 +133,13 @@ export class HaCodeEditor extends ReactiveElement {
       transactions.push({
         effects: this._loadedCodeMirror!.readonlyCompartment!.reconfigure(
           this._loadedCodeMirror!.EditorView!.editable.of(!this.readOnly)
+        ),
+      });
+    }
+    if (changedProps.has("linewrap")) {
+      transactions.push({
+        effects: this._loadedCodeMirror!.linewrapCompartment!.reconfigure(
+          this.linewrap ? this._loadedCodeMirror!.EditorView.lineWrapping : []
         ),
       });
     }
@@ -181,6 +189,9 @@ export class HaCodeEditor extends ReactiveElement {
       this._loadedCodeMirror.haSyntaxHighlighting,
       this._loadedCodeMirror.readonlyCompartment.of(
         this._loadedCodeMirror.EditorView.editable.of(!this.readOnly)
+      ),
+      this._loadedCodeMirror.linewrapCompartment.of(
+        this.linewrap ? this._loadedCodeMirror.EditorView.lineWrapping : []
       ),
       this._loadedCodeMirror.EditorView.updateListener.of(this._onUpdate),
     ];

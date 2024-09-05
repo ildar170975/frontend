@@ -9,28 +9,30 @@ import { HomeAssistant } from "../../../types";
 class MoreInfoCounter extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public stateObj?: HassEntity;
+  @property({ attribute: false }) public stateObj?: HassEntity;
 
   protected render() {
     if (!this.hass || !this.stateObj) {
       return nothing;
     }
 
-    const disabled = isUnavailableState(this.stateObj!.state);
+    const disabled = isUnavailableState(this.stateObj.state);
 
     return html`
       <div class="actions">
         <mwc-button
           .action=${"increment"}
           @click=${this._handleActionClick}
-          .disabled=${disabled}
+          .disabled=${disabled ||
+          Number(this.stateObj.state) === this.stateObj.attributes.maximum}
         >
           ${this.hass!.localize("ui.card.counter.actions.increment")}
         </mwc-button>
         <mwc-button
           .action=${"decrement"}
           @click=${this._handleActionClick}
-          .disabled=${disabled}
+          .disabled=${disabled ||
+          Number(this.stateObj.state) === this.stateObj.attributes.minimum}
         >
           ${this.hass!.localize("ui.card.counter.actions.decrement")}
         </mwc-button>

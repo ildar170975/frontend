@@ -10,11 +10,11 @@ import "../../../../components/ha-svg-icon";
 
 @customElement("voice-assistants-expose-assistant-icon")
 export class VoiceAssistantExposeAssistantIcon extends LitElement {
-  @property() public hass!: HomeAssistant;
+  @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property({ type: Boolean }) public unsupported!: boolean;
+  @property({ type: Boolean }) public unsupported = false;
 
-  @property({ type: Boolean }) public manual?: boolean;
+  @property({ type: Boolean }) public manual = false;
 
   @property() public assistant?:
     | "conversation"
@@ -37,6 +37,7 @@ export class VoiceAssistantExposeAssistantIcon extends LitElement {
             type: "icon",
             darkOptimized: this.hass.themes?.darkMode,
           })}
+          crossorigin="anonymous"
           referrerpolicy="no-referrer"
           slot="prefix"
         />
@@ -83,6 +84,8 @@ export class VoiceAssistantExposeAssistantIcon extends LitElement {
         position: relative;
         height: 24px;
         margin-right: 16px;
+        margin-inline-end: 16px;
+        margin-inline-start: initial;
       }
       .unsupported {
         color: var(--error-color);
@@ -90,6 +93,8 @@ export class VoiceAssistantExposeAssistantIcon extends LitElement {
         --mdc-icon-size: 16px;
         right: 10px;
         top: -7px;
+        inset-inline-end: 10px;
+        inset-inline-start: initial;
       }
     `;
   }

@@ -6,19 +6,18 @@ import {
   mdiCloseCircle,
   mdiProgressClock,
 } from "@mdi/js";
-import { UnsubscribeFunc } from "home-assistant-js-websocket";
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
-  nothing,
   PropertyValues,
   TemplateResult,
+  css,
+  html,
+  nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
-import memoizeOne from "memoize-one";
+import { groupBy } from "../../../../../common/util/group-by";
 import "../../../../../components/ha-alert";
 import "../../../../../components/ha-card";
 import "../../../../../components/ha-icon-next";
@@ -27,25 +26,19 @@ import "../../../../../components/ha-settings-row";
 import "../../../../../components/ha-svg-icon";
 import "../../../../../components/ha-switch";
 import "../../../../../components/ha-textfield";
-import { groupBy } from "../../../../../common/util/group-by";
+import { computeDeviceName } from "../../../../../data/device_registry";
 import {
-  computeDeviceName,
-  DeviceRegistryEntry,
-  subscribeDeviceRegistry,
-} from "../../../../../data/device_registry";
-import {
+  ZWaveJSNodeConfigParam,
+  ZWaveJSNodeConfigParams,
+  ZWaveJSSetConfigParamResult,
+  ZwaveJSNodeMetadata,
   fetchZwaveNodeConfigParameters,
   fetchZwaveNodeMetadata,
   setZwaveNodeConfigParameter,
-  ZWaveJSNodeConfigParam,
-  ZWaveJSNodeConfigParams,
-  ZwaveJSNodeMetadata,
-  ZWaveJSSetConfigParamResult,
 } from "../../../../../data/zwave_js";
 import "../../../../../layouts/hass-error-screen";
 import "../../../../../layouts/hass-loading-screen";
 import "../../../../../layouts/hass-tabs-subpage";
-import { SubscribeMixin } from "../../../../../mixins/subscribe-mixin";
 import { haStyle } from "../../../../../resources/styles";
 import type { HomeAssistant, Route } from "../../../../../types";
 import "../../../ha-config-section";
@@ -57,30 +50,19 @@ const icons = {
   error: mdiCloseCircle,
 };
 
-const getDevice = memoizeOne(
-  (
-    deviceId: string,
-    entries?: DeviceRegistryEntry[]
-  ): DeviceRegistryEntry | undefined =>
-    entries?.find((device) => device.id === deviceId)
-);
-
 @customElement("zwave_js-node-config")
-class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
+class ZWaveJSNodeConfig extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ attribute: false }) public route!: Route;
 
-  @property({ type: Boolean }) public narrow!: boolean;
+  @property({ type: Boolean }) public narrow = false;
 
-  @property({ type: Boolean }) public isWide!: boolean;
+  @property({ type: Boolean }) public isWide = false;
 
   @property() public configEntryId?: string;
 
   @property() public deviceId!: string;
-
-  @property({ type: Array })
-  private _deviceRegistryEntries?: DeviceRegistryEntry[];
 
   @state() private _nodeMetadata?: ZwaveJSNodeMetadata;
 
@@ -95,19 +77,8 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
     this.deviceId = this.route.path.substr(1);
   }
 
-  public hassSubscribe(): UnsubscribeFunc[] {
-    return [
-      subscribeDeviceRegistry(this.hass.connection, (entries) => {
-        this._deviceRegistryEntries = entries;
-      }),
-    ];
-  }
-
   protected updated(changedProps: PropertyValues): void {
-    if (
-      (!this._config || changedProps.has("deviceId")) &&
-      changedProps.has("_deviceRegistryEntries")
-    ) {
+    if (!this._config || changedProps.has("deviceId")) {
       this._fetchData();
     }
   }
@@ -126,7 +97,7 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
       return html`<hass-loading-screen></hass-loading-screen>`;
     }
 
-    const device = this._device!;
+    const device = this.hass.devices[this.deviceId];
 
     return html`
       <hass-tabs-subpage
@@ -160,16 +131,17 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
               <em>
                 ${this.hass.localize(
                   "ui.panel.config.zwave_js.node_config.attribution",
-                  "device_database",
-                  html`<a
-                    rel="noreferrer noopener"
-                    href=${this._nodeMetadata?.device_database_url ||
-                    "https://devices.zwave-js.io"}
-                    target="_blank"
-                    >${this.hass.localize(
-                      "ui.panel.config.zwave_js.node_config.zwave_js_device_database"
-                    )}</a
-                  >`
+                  {
+                    device_database: html`<a
+                      rel="noreferrer noopener"
+                      href=${this._nodeMetadata?.device_database_url ||
+                      "https://devices.zwave-js.io"}
+                      target="_blank"
+                      >${this.hass.localize(
+                        "ui.panel.config.zwave_js.node_config.zwave_js_device_database"
+                      )}</a
+                    >`,
+                  }
                 )}
               </em>
             </p>
@@ -184,8 +156,7 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
                 <h3>
                   ${this.hass.localize(
                     "ui.panel.config.zwave_js.node_config.endpoint",
-                    "endpoint",
-                    endpoint
+                    { endpoint }
                   )}
                 </h3>
                 <ha-card>
@@ -236,7 +207,7 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
         ${item.metadata.label}
       </span>
       <span slot="description">
-        ${item.metadata.description || item.metadata.label}
+        ${item.metadata.description}
         ${item.metadata.description !== null && !item.metadata.writeable
           ? html`<br />`
           : nothing}
@@ -393,7 +364,7 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
     try {
       const result = await setZwaveNodeConfigParameter(
         this.hass,
-        this._device!.id,
+        this.deviceId,
         target.property,
         target.endpoint,
         value,
@@ -421,16 +392,12 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
     this._results = { ...this._results, [key]: errorParam };
   }
 
-  private get _device(): DeviceRegistryEntry | undefined {
-    return getDevice(this.deviceId, this._deviceRegistryEntries);
-  }
-
   private async _fetchData() {
-    if (!this.configEntryId || !this._deviceRegistryEntries) {
+    if (!this.configEntryId) {
       return;
     }
 
-    const device = this._device;
+    const device = this.hass.devices[this.deviceId];
     if (!device) {
       this._error = "device_not_found";
       return;
@@ -478,6 +445,8 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
         .sectionHeader {
           position: relative;
           padding-right: 40px;
+          padding-inline-start: initial;
+          padding-inline-end: 40px;
         }
 
         ha-settings-row {
@@ -498,6 +467,8 @@ class ZWaveJSNodeConfig extends SubscribeMixin(LitElement) {
           text-transform: uppercase;
           font-size: 0.8em;
           padding-right: 24px;
+          padding-inline-end: 24px;
+          padding-inline-start: initial;
           line-height: 1.5em;
         }
 

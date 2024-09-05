@@ -2,7 +2,7 @@ import type { Selector } from "../../data/selector";
 import type { HaFormSchema } from "./types";
 
 export const computeInitialHaFormData = (
-  schema: HaFormSchema[]
+  schema: HaFormSchema[] | readonly HaFormSchema[]
 ): Record<string, any> => {
   const data = {};
   schema.forEach((field) => {
@@ -27,7 +27,8 @@ export const computeInitialHaFormData = (
       data[field.name] = 0.0;
     } else if (field.type === "select") {
       if (field.options.length) {
-        data[field.name] = field.options[0][0];
+        const val = field.options[0];
+        data[field.name] = Array.isArray(val) ? val[0] : val;
       }
     } else if (field.type === "positive_time_period_dict") {
       data[field.name] = {
@@ -35,6 +36,8 @@ export const computeInitialHaFormData = (
         minutes: 0,
         seconds: 0,
       };
+    } else if (field.type === "expandable") {
+      data[field.name] = computeInitialHaFormData(field.schema);
     } else if ("selector" in field) {
       const selector: Selector = field.selector;
 
@@ -53,15 +56,26 @@ export const computeInitialHaFormData = (
         "icon" in selector ||
         "template" in selector ||
         "text" in selector ||
-        "theme" in selector
+        "theme" in selector ||
+        "object" in selector
       ) {
         data[field.name] = "";
       } else if ("number" in selector) {
         data[field.name] = selector.number?.min ?? 0;
       } else if ("select" in selector) {
         if (selector.select?.options.length) {
-          const val = selector.select.options[0];
-          data[field.name] = Array.isArray(val) ? val[0] : val;
+          const firstOption = selector.select.options[0];
+          const val =
+            typeof firstOption === "string" ? firstOption : firstOption.value;
+          data[field.name] = selector.select.multiple ? [val] : val;
+        }
+      } else if ("country" in selector) {
+        if (selector.country?.countries?.length) {
+          data[field.name] = selector.country.countries[0];
+        }
+      } else if ("language" in selector) {
+        if (selector.language?.languages?.length) {
+          data[field.name] = selector.language.languages[0];
         }
       } else if ("duration" in selector) {
         data[field.name] = {
@@ -80,12 +94,16 @@ export const computeInitialHaFormData = (
         data[field.name] = selector.color_temp?.min_mireds ?? 153;
       } else if (
         "action" in selector ||
+        "trigger" in selector ||
+        "condition" in selector ||
         "media" in selector ||
         "target" in selector
       ) {
         data[field.name] = {};
       } else {
-        throw new Error("Selector not supported in initial form data");
+        throw new Error(
+          `Selector ${Object.keys(selector)[0]} not supported in initial form data`
+        );
       }
     }
   });

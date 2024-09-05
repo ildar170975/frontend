@@ -1,5 +1,12 @@
-import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators";
+import {
+  css,
+  CSSResultGroup,
+  html,
+  LitElement,
+  nothing,
+  PropertyValues,
+} from "lit";
+import { customElement, property, query } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../../../common/dom/fire_event";
 import { stopPropagation } from "../../../common/dom/stop_propagation";
@@ -13,10 +20,11 @@ import {
   CallServiceActionConfig,
   NavigateActionConfig,
   UrlActionConfig,
-} from "../../../data/lovelace";
+} from "../../../data/lovelace/config/action";
 import { ServiceAction } from "../../../data/script";
 import { HomeAssistant } from "../../../types";
 import { EditorTarget } from "../editor/types";
+import { HaSelect } from "../../../components/ha-select";
 
 export type UiAction = Exclude<ActionConfig["action"], "fire-dom-event">;
 
@@ -25,10 +33,19 @@ const DEFAULT_ACTIONS: UiAction[] = [
   "toggle",
   "navigate",
   "url",
-  "call-service",
+  "perform-action",
   "assist",
   "none",
 ];
+
+const NAVIGATE_SCHEMA = [
+  {
+    name: "navigation_path",
+    selector: {
+      navigation: {},
+    },
+  },
+] as const satisfies readonly HaFormSchema[];
 
 const ASSIST_SCHEMA = [
   {
@@ -55,15 +72,19 @@ const ASSIST_SCHEMA = [
 
 @customElement("hui-action-editor")
 export class HuiActionEditor extends LitElement {
-  @property() public config?: ActionConfig;
+  @property({ attribute: false }) public config?: ActionConfig;
 
   @property() public label?: string;
 
-  @property() public actions?: UiAction[];
+  @property({ attribute: false }) public actions?: UiAction[];
+
+  @property({ attribute: false }) public defaultAction?: UiAction;
 
   @property() public tooltipText?: string;
 
-  @property() protected hass?: HomeAssistant;
+  @property({ attribute: false }) public hass?: HomeAssistant;
+
+  @query("ha-select") private _select!: HaSelect;
 
   get _navigation_path(): string {
     const config = this.config as NavigateActionConfig | undefined;
@@ -77,18 +98,27 @@ export class HuiActionEditor extends LitElement {
 
   get _service(): string {
     const config = this.config as CallServiceActionConfig;
-    return config?.service || "";
+    return config?.perform_action || config?.service || "";
   }
 
   private _serviceAction = memoizeOne(
     (config: CallServiceActionConfig): ServiceAction => ({
-      service: this._service,
+      action: this._service,
       ...(config.data || config.service_data
         ? { data: config.data ?? config.service_data }
         : null),
       target: config.target,
     })
   );
+
+  protected updated(changedProperties: PropertyValues<typeof this>) {
+    super.updated(changedProperties);
+    if (changedProperties.has("defaultAction")) {
+      if (changedProperties.get("defaultAction") !== this.defaultAction) {
+        this._select.layoutOptions();
+      }
+    }
+  }
 
   protected render() {
     if (!this.hass) {
@@ -97,13 +127,19 @@ export class HuiActionEditor extends LitElement {
 
     const actions = this.actions ?? DEFAULT_ACTIONS;
 
+    let action = this.config?.action || "default";
+
+    if (action === "call-service") {
+      action = "perform-action";
+    }
+
     return html`
       <div class="dropdown">
         <ha-select
           .label=${this.label}
           .configValue=${"action"}
           @selected=${this._actionPicked}
-          .value=${this.config?.action ?? "default"}
+          .value=${action}
           @closed=${stopPropagation}
           fixedMenuPosition
           naturalMenuWidt
@@ -112,12 +148,17 @@ export class HuiActionEditor extends LitElement {
             ${this.hass!.localize(
               "ui.panel.lovelace.editor.action-editor.actions.default_action"
             )}
+            ${this.defaultAction
+              ? ` (${this.hass!.localize(
+                  `ui.panel.lovelace.editor.action-editor.actions.${this.defaultAction}`
+                ).toLowerCase()})`
+              : nothing}
           </mwc-list-item>
           ${actions.map(
-            (action) => html`
-              <mwc-list-item .value=${action}>
+            (actn) => html`
+              <mwc-list-item .value=${actn}>
                 ${this.hass!.localize(
-                  `ui.panel.lovelace.editor.action-editor.actions.${action}`
+                  `ui.panel.lovelace.editor.action-editor.actions.${actn}`
                 )}
               </mwc-list-item>
             `
@@ -131,14 +172,14 @@ export class HuiActionEditor extends LitElement {
       </div>
       ${this.config?.action === "navigate"
         ? html`
-            <ha-navigation-picker
+            <ha-form
               .hass=${this.hass}
-              .label=${this.hass!.localize(
-                "ui.panel.lovelace.editor.action-editor.navigation_path"
-              )}
-              .value=${this._navigation_path}
-              @value-changed=${this._navigateValueChanged}
-            ></ha-navigation-picker>
+              .schema=${NAVIGATE_SCHEMA}
+              .data=${this.config}
+              .computeLabel=${this._computeFormLabel}
+              @value-changed=${this._formValueChanged}
+            >
+            </ha-form>
           `
         : nothing}
       ${this.config?.action === "url"
@@ -153,7 +194,8 @@ export class HuiActionEditor extends LitElement {
             ></ha-textfield>
           `
         : nothing}
-      ${this.config?.action === "call-service"
+      ${this.config?.action === "call-service" ||
+      this.config?.action === "perform-action"
         ? html`
             <ha-service-control
               .hass=${this.hass}
@@ -184,8 +226,15 @@ export class HuiActionEditor extends LitElement {
     if (!this.hass) {
       return;
     }
+    let action = this.config?.action;
+
+    if (action === "call-service") {
+      action = "perform-action";
+    }
+
     const value = ev.target.value;
-    if (this.config?.action === value) {
+
+    if (action === value) {
       return;
     }
     if (value === "default") {
@@ -199,8 +248,8 @@ export class HuiActionEditor extends LitElement {
         data = { url_path: this._url_path };
         break;
       }
-      case "call-service": {
-        data = { service: this._service };
+      case "perform-action": {
+        data = { perform_action: this._service };
         break;
       }
       case "navigate": {
@@ -250,7 +299,8 @@ export class HuiActionEditor extends LitElement {
     ev.stopPropagation();
     const value = {
       ...this.config!,
-      service: ev.detail.value.service || "",
+      action: "perform-action",
+      perform_action: ev.detail.value.action || "",
       data: ev.detail.value.data,
       target: ev.detail.value.target || {},
     };
@@ -261,16 +311,9 @@ export class HuiActionEditor extends LitElement {
     if ("service_data" in value) {
       delete value.service_data;
     }
-
-    fireEvent(this, "value-changed", { value });
-  }
-
-  private _navigateValueChanged(ev: CustomEvent) {
-    ev.stopPropagation();
-    const value = {
-      ...this.config!,
-      navigation_path: ev.detail.value,
-    };
+    if ("service" in value) {
+      delete value.service;
+    }
 
     fireEvent(this, "value-changed", { value });
   }

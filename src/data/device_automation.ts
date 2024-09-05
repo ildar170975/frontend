@@ -178,7 +178,11 @@ const getEntityName = (
   entityId: string | undefined
 ): string => {
   if (!entityId) {
-    return "<unknown entity>";
+    return (
+      "<" +
+      hass.localize("ui.panel.config.automation.editor.unknown_entity") +
+      ">"
+    );
   }
   if (entityId.includes(".")) {
     const state = hass.states[entityId];
@@ -191,7 +195,11 @@ const getEntityName = (
   if (entityReg) {
     return computeEntityRegistryName(hass, entityReg) || entityId;
   }
-  return "<unknown entity>";
+  return (
+    "<" +
+    hass.localize("ui.panel.config.automation.editor.unknown_entity") +
+    ">"
+  );
 };
 
 export const localizeDeviceAutomationAction = (
@@ -201,14 +209,14 @@ export const localizeDeviceAutomationAction = (
 ): string =>
   hass.localize(
     `component.${action.domain}.device_automation.action_type.${action.type}`,
-    "entity_name",
-    getEntityName(hass, entityRegistry, action.entity_id),
-    "subtype",
-    action.subtype
-      ? hass.localize(
-          `component.${action.domain}.device_automation.action_subtype.${action.subtype}`
-        ) || action.subtype
-      : ""
+    {
+      entity_name: getEntityName(hass, entityRegistry, action.entity_id),
+      subtype: action.subtype
+        ? hass.localize(
+            `component.${action.domain}.device_automation.action_subtype.${action.subtype}`
+          ) || action.subtype
+        : "",
+    }
   ) || (action.subtype ? `"${action.subtype}" ${action.type}` : action.type!);
 
 export const localizeDeviceAutomationCondition = (
@@ -218,14 +226,14 @@ export const localizeDeviceAutomationCondition = (
 ): string =>
   hass.localize(
     `component.${condition.domain}.device_automation.condition_type.${condition.type}`,
-    "entity_name",
-    getEntityName(hass, entityRegistry, condition.entity_id),
-    "subtype",
-    condition.subtype
-      ? hass.localize(
-          `component.${condition.domain}.device_automation.condition_subtype.${condition.subtype}`
-        ) || condition.subtype
-      : ""
+    {
+      entity_name: getEntityName(hass, entityRegistry, condition.entity_id),
+      subtype: condition.subtype
+        ? hass.localize(
+            `component.${condition.domain}.device_automation.condition_subtype.${condition.subtype}`
+          ) || condition.subtype
+        : "",
+    }
   ) ||
   (condition.subtype
     ? `"${condition.subtype}" ${condition.type}`
@@ -238,16 +246,32 @@ export const localizeDeviceAutomationTrigger = (
 ): string =>
   hass.localize(
     `component.${trigger.domain}.device_automation.trigger_type.${trigger.type}`,
-    "entity_name",
-    getEntityName(hass, entityRegistry, trigger.entity_id),
-    "subtype",
-    trigger.subtype
-      ? hass.localize(
-          `component.${trigger.domain}.device_automation.trigger_subtype.${trigger.subtype}`
-        ) || trigger.subtype
-      : ""
+    {
+      entity_name: getEntityName(hass, entityRegistry, trigger.entity_id),
+      subtype: trigger.subtype
+        ? hass.localize(
+            `component.${trigger.domain}.device_automation.trigger_subtype.${trigger.subtype}`
+          ) || trigger.subtype
+        : "",
+    }
   ) ||
   (trigger.subtype ? `"${trigger.subtype}" ${trigger.type}` : trigger.type!);
+
+export const localizeExtraFieldsComputeLabelCallback =
+  (hass: HomeAssistant, deviceAutomation: DeviceAutomation) =>
+  // Returns a callback for ha-form to calculate labels per schema object
+  (schema): string =>
+    hass.localize(
+      `component.${deviceAutomation.domain}.device_automation.extra_fields.${schema.name}`
+    ) || schema.name;
+
+export const localizeExtraFieldsComputeHelperCallback =
+  (hass: HomeAssistant, deviceAutomation: DeviceAutomation) =>
+  // Returns a callback for ha-form to calculate helper texts per schema object
+  (schema): string | undefined =>
+    hass.localize(
+      `component.${deviceAutomation.domain}.device_automation.extra_fields_descriptions.${schema.name}`
+    );
 
 export const sortDeviceAutomations = (
   automationA: DeviceAutomation,

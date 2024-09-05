@@ -20,7 +20,7 @@ export class HaPlayMediaAction extends LitElement implements ActionElement {
 
   public static get defaultConfig(): PlayMediaAction {
     return {
-      service: "media_player.play_media",
+      action: "media_player.play_media",
       target: { entity_id: "" },
       data: { media_content_id: "", media_content_type: "" },
       metadata: {},
@@ -51,6 +51,7 @@ export class HaPlayMediaAction extends LitElement implements ActionElement {
     ev.stopPropagation();
     fireEvent(this, "value-changed", {
       value: {
+        ...this.action,
         service: "media_player.play_media",
         target: { entity_id: ev.detail.value.entity_id },
         data: {

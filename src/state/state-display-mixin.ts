@@ -1,4 +1,5 @@
 import { computeFormatFunctions } from "../common/translations/entity-state";
+import { getSensorNumericDeviceClasses } from "../data/sensor";
 import { Constructor, HomeAssistant } from "../types";
 import { HassBaseEl } from "./hass-base-mixin";
 
@@ -17,20 +18,24 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) => {
       }
       const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
 
-      if (this.hass) {
-        if (
-          this.hass.localize !== oldHass?.localize ||
+      if (
+        this.hass &&
+        (!oldHass ||
+          this.hass.localize !== oldHass.localize ||
           this.hass.locale !== oldHass.locale ||
           this.hass.config !== oldHass.config ||
-          this.hass.entities !== oldHass.entities
-        ) {
-          this._updateStateDisplay();
-        }
+          this.hass.entities !== oldHass.entities)
+      ) {
+        this._updateStateDisplay();
       }
     }
 
     private _updateStateDisplay = async () => {
       if (!this.hass) return;
+
+      const { numeric_device_classes: sensorNumericDeviceClasses } =
+        await getSensorNumericDeviceClasses(this.hass);
+
       const {
         formatEntityState,
         formatEntityAttributeName,
@@ -39,7 +44,8 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) => {
         this.hass.localize,
         this.hass.locale,
         this.hass.config,
-        this.hass.entities
+        this.hass.entities,
+        sensorNumericDeviceClasses
       );
       this._updateHass({
         formatEntityState,

@@ -21,7 +21,7 @@ declare global {
   /* eslint-disable no-var, no-redeclare */
   var __DEV__: boolean;
   var __DEMO__: boolean;
-  var __BUILD__: "latest" | "es5";
+  var __BUILD__: "modern" | "legacy";
   var __VERSION__: string;
   var __STATIC_PATH__: string;
   var __BACKWARDS_COMPAT__: boolean;
@@ -49,7 +49,6 @@ declare global {
     };
     change: undefined;
     "hass-logout": undefined;
-    "iron-resize": undefined;
     "config-refresh": undefined;
     "hass-api-called": {
       success: boolean;
@@ -140,6 +139,8 @@ export type FullCalendarView =
   | "dayGridDay"
   | "listWeek";
 
+export type ThemeMode = "auto" | "light" | "dark";
+
 export interface ToggleButton {
   label: string;
   iconPath?: string;
@@ -191,6 +192,7 @@ export interface Context {
 
 export interface ServiceCallResponse {
   context: Context;
+  response?: any;
 }
 
 export interface ServiceCallRequest {
@@ -230,6 +232,7 @@ export interface HomeAssistant {
   suspendWhenHidden: boolean;
   enableShortcuts: boolean;
   vibrate: boolean;
+  debugConnection: boolean;
   dockedSidebar: "docked" | "always_hidden" | "auto";
   defaultPanel: string;
   moreInfoEntityId: string | null;
@@ -240,7 +243,9 @@ export interface HomeAssistant {
     domain: ServiceCallRequest["domain"],
     service: ServiceCallRequest["service"],
     serviceData?: ServiceCallRequest["serviceData"],
-    target?: ServiceCallRequest["target"]
+    target?: ServiceCallRequest["target"],
+    notifyOnError?: boolean,
+    returnResponse?: boolean
   ): Promise<ServiceCallResponse>;
   callApi<T>(
     method: "GET" | "POST" | "PUT" | "DELETE",
@@ -289,5 +294,9 @@ export type AsyncReturnType<T extends (...args: any) => any> = T extends (
 ) => Promise<infer U>
   ? U
   : T extends (...args: any) => infer U
-  ? U
-  : never;
+    ? U
+    : never;
+
+export type Entries<T> = [keyof T, T[keyof T]][];
+
+export type ItemPath = (number | string)[];

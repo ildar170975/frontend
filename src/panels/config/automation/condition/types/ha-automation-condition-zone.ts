@@ -21,8 +21,9 @@ export class HaZoneCondition extends LitElement {
 
   @property({ type: Boolean }) public disabled = false;
 
-  public static get defaultConfig() {
+  public static get defaultConfig(): ZoneCondition {
     return {
+      condition: "zone",
       entity_id: "",
       zone: "",
     };
@@ -53,11 +54,6 @@ export class HaZoneCondition extends LitElement {
         allow-custom-entity
         .includeDomains=${includeDomains}
       ></ha-entity-picker>
-      <label id="eventlabel">
-        ${this.hass.localize(
-          "ui.panel.config.automation.editor.conditions.type.zone.event"
-        )}
-      </label>
     `;
   }
 

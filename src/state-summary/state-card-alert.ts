@@ -1,23 +1,19 @@
 import type { HassEntity } from "home-assistant-js-websocket";
 import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators";
-import { computeStateDisplay } from "../common/entity/compute_state_display";
-import { computeRTL } from "../common/util/compute_rtl";
+import { stateActive } from "../common/entity/state_active";
+import "../components/entity/ha-entity-toggle";
 import "../components/entity/state-info";
 import { haStyle } from "../resources/styles";
-import { stateActive } from "../common/entity/state_active";
 import type { HomeAssistant } from "../types";
 
 @customElement("state-card-alert")
-export class StateCardAlert extends LitElement {
+class StateCardAlert extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ attribute: false }) public stateObj!: HassEntity;
 
   @property({ type: Boolean }) public inDialog = false;
-
-  // property used only in CSS
-  @property({ type: Boolean, reflect: true }) public rtl = false;
 
   protected render(): TemplateResult {
     return html`
@@ -34,28 +30,10 @@ export class StateCardAlert extends LitElement {
                 .hass=${this.hass}
                 .stateObj=${this.stateObj}
               ></ha-entity-toggle>`
-            : computeStateDisplay(
-                this.hass!.localize,
-                this.stateObj,
-                this.hass.locale,
-                this.hass.config,
-                this.hass.entities
-              )}
+            : this.hass.formatEntityState(this.stateObj)}
         </div>
       </div>
     `;
-  }
-
-  protected updated(changedProps) {
-    super.updated(changedProps);
-    if (!changedProps.has("hass")) {
-      return;
-    }
-
-    const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
-    if (!oldHass || oldHass.language !== this.hass.language) {
-      this.rtl = computeRTL(this.hass);
-    }
   }
 
   static get styles(): CSSResultGroup {
@@ -75,13 +53,20 @@ export class StateCardAlert extends LitElement {
           overflow-wrap: break-word;
           display: flex;
           align-items: center;
-          direction: ltr;
         }
         ha-entity-toggle {
           margin: -4px -16px -4px 0;
+          margin-inline-start: 0;
+          margin-inline-end: -16px;
           padding: 4px 16px;
         }
       `,
     ];
+  }
+}
+
+declare global {
+  interface HTMLElementTagNameMap {
+    "state-card-alert": StateCardAlert;
   }
 }

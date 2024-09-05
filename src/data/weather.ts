@@ -1,6 +1,9 @@
 import {
   mdiAlertCircleOutline,
   mdiGauge,
+  mdiThermometer,
+  mdiThermometerWater,
+  mdiSunWireless,
   mdiWaterPercent,
   mdiWeatherCloudy,
   mdiWeatherFog,
@@ -8,7 +11,6 @@ import {
   mdiWeatherLightning,
   mdiWeatherLightningRainy,
   mdiWeatherNight,
-  mdiWeatherNightPartlyCloudy,
   mdiWeatherPartlyCloudy,
   mdiWeatherPouring,
   mdiWeatherRainy,
@@ -36,7 +38,9 @@ export const enum WeatherEntityFeature {
   FORECAST_TWICE_DAILY = 4,
 }
 
-export type ForecastType = "legacy" | "hourly" | "daily" | "twice_daily";
+export type ModernForecastType = "hourly" | "daily" | "twice_daily";
+
+export type ForecastType = ModernForecastType | "legacy";
 
 interface ForecastAttribute {
   temperature: number;
@@ -113,10 +117,15 @@ export const weatherIcons = {
 };
 
 export const weatherAttrIcons = {
+  apparent_temperature: mdiThermometer,
+  cloud_coverage: mdiWeatherCloudy,
+  dew_point: mdiThermometerWater,
   humidity: mdiWaterPercent,
   wind_bearing: mdiWeatherWindy,
   wind_speed: mdiWeatherWindy,
   pressure: mdiGauge,
+  temperature: mdiThermometer,
+  uv_index: mdiSunWireless,
   visibility: mdiWeatherFog,
   precipitation: mdiWeatherRainy,
 };
@@ -220,6 +229,8 @@ export const getWeatherUnit = (
         stateObj.attributes.pressure_unit ||
         (lengthUnit === "km" ? "hPa" : "inHg")
       );
+    case "apparent_temperature":
+    case "dew_point":
     case "temperature":
     case "templow":
       return (
@@ -227,6 +238,7 @@ export const getWeatherUnit = (
       );
     case "wind_speed":
       return stateObj.attributes.wind_speed_unit || `${lengthUnit}/h`;
+    case "cloud_coverage":
     case "humidity":
     case "precipitation_probability":
       return "%";
@@ -381,13 +393,13 @@ const getWeatherStateSVG = (
           />
         `
       : state === "partlycloudy"
-      ? svg`
+        ? svg`
           <path
             class="sun"
             d="m14.981 4.2112c0 1.9244-1.56 3.4844-3.484 3.4844-1.9244 0-3.4844-1.56-3.4844-3.4844s1.56-3.484 3.4844-3.484c1.924 0 3.484 1.5596 3.484 3.484"
           />
         `
-      : ""
+        : ""
   }
   ${
     cloudyStates.has(state)
@@ -518,13 +530,6 @@ export const getWeatherStateIcon = (
   return undefined;
 };
 
-export const weatherIcon = (state?: string, nightTime?: boolean): string =>
-  !state
-    ? undefined
-    : nightTime && state === "partlycloudy"
-    ? mdiWeatherNightPartlyCloudy
-    : weatherIcons[state];
-
 const EIGHT_HOURS = 28800000;
 const DAY_IN_MILLISECONDS = 86400000;
 
@@ -636,7 +641,7 @@ export const getForecast = (
 export const subscribeForecast = (
   hass: HomeAssistant,
   entity_id: string,
-  forecast_type: "daily" | "hourly" | "twice_daily",
+  forecast_type: ModernForecastType,
   callback: (forecastevent: ForecastEvent) => void
 ) =>
   hass.connection.subscribeMessage<ForecastEvent>(callback, {
@@ -644,6 +649,22 @@ export const subscribeForecast = (
     forecast_type,
     entity_id,
   });
+
+export const getSupportedForecastTypes = (
+  stateObj: HassEntityBase
+): ModernForecastType[] => {
+  const supported: ModernForecastType[] = [];
+  if (supportsFeature(stateObj, WeatherEntityFeature.FORECAST_DAILY)) {
+    supported.push("daily");
+  }
+  if (supportsFeature(stateObj, WeatherEntityFeature.FORECAST_TWICE_DAILY)) {
+    supported.push("twice_daily");
+  }
+  if (supportsFeature(stateObj, WeatherEntityFeature.FORECAST_HOURLY)) {
+    supported.push("hourly");
+  }
+  return supported;
+};
 
 export const getDefaultForecastType = (stateObj: HassEntityBase) => {
   if (supportsFeature(stateObj, WeatherEntityFeature.FORECAST_DAILY)) {

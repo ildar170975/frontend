@@ -1,12 +1,12 @@
 import "@material/mwc-button";
 import { dump, load } from "js-yaml";
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
   PropertyValues,
   TemplateResult,
+  css,
+  html,
 } from "lit";
 import { property, query, state } from "lit/decorators";
 import { fireEvent } from "../../../common/dom/fire_event";
@@ -16,29 +16,34 @@ import "../../../components/ha-alert";
 import "../../../components/ha-circular-progress";
 import "../../../components/ha-code-editor";
 import type { HaCodeEditor } from "../../../components/ha-code-editor";
-import type {
-  LovelaceCardConfig,
-  LovelaceConfig,
-} from "../../../data/lovelace";
+import { LovelaceCardConfig } from "../../../data/lovelace/config/card";
+import { LovelaceStrategyConfig } from "../../../data/lovelace/config/strategy";
+import { LovelaceConfig } from "../../../data/lovelace/config/types";
 import type { HomeAssistant } from "../../../types";
+import { LovelaceCardFeatureConfig } from "../card-features/types";
 import type { LovelaceRowConfig } from "../entity-rows/types";
 import { LovelaceHeaderFooterConfig } from "../header-footer/types";
-import { LovelaceTileFeatureConfig } from "../tile-features/types";
+import { LovelaceElementConfig } from "../elements/types";
 import type {
   LovelaceConfigForm,
   LovelaceGenericElementEditor,
 } from "../types";
+import "./card-editor/hui-card-visibility-editor";
 import type { HuiFormEditor } from "./config-elements/hui-form-editor";
 import "./config-elements/hui-generic-entity-row-editor";
 import { GUISupportError } from "./gui-support-error";
 import { EditSubElementEvent, GUIModeChangedEvent } from "./types";
+import { LovelaceBadgeConfig } from "../../../data/lovelace/config/badge";
 
 export interface ConfigChangedEvent {
   config:
     | LovelaceCardConfig
     | LovelaceRowConfig
     | LovelaceHeaderFooterConfig
-    | LovelaceTileFeatureConfig;
+    | LovelaceCardFeatureConfig
+    | LovelaceStrategyConfig
+    | LovelaceElementConfig
+    | LovelaceBadgeConfig;
   error?: string;
   guiModeAvailable?: boolean;
 }
@@ -57,7 +62,7 @@ export interface UIConfigChangedEvent extends Event {
       | LovelaceCardConfig
       | LovelaceRowConfig
       | LovelaceHeaderFooterConfig
-      | LovelaceTileFeatureConfig;
+      | LovelaceCardFeatureConfig;
   };
 }
 
@@ -198,6 +203,10 @@ export abstract class HuiElementEditor<T, C = any> extends LitElement {
     return this.value ? (this.value as any).type : undefined;
   }
 
+  protected renderConfigElement(): TemplateResult {
+    return html`${this._configElement}`;
+  }
+
   protected render(): TemplateResult {
     return html`
       <div class="wrapper">
@@ -207,12 +216,11 @@ export abstract class HuiElementEditor<T, C = any> extends LitElement {
                 ${this._loading
                   ? html`
                       <ha-circular-progress
-                        active
-                        alt="Loading"
+                        indeterminate
                         class="center margin-bot"
                       ></ha-circular-progress>
                     `
-                  : this._configElement}
+                  : this.renderConfigElement()}
               </div>
             `
           : html`
@@ -234,11 +242,9 @@ export abstract class HuiElementEditor<T, C = any> extends LitElement {
         ${this._guiSupported === false && this.configElementType
           ? html`
               <div class="info">
-                ${this.hass.localize(
-                  "ui.errors.config.editor_not_available",
-                  "type",
-                  this.configElementType
-                )}
+                ${this.hass.localize("ui.errors.config.editor_not_available", {
+                  type: this.configElementType,
+                })}
               </div>
             `
           : ""}

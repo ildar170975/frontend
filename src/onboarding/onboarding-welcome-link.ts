@@ -1,15 +1,8 @@
-import "@material/mwc-ripple";
-import type { Ripple } from "@material/mwc-ripple";
-import { RippleHandlers } from "@material/mwc-ripple/ripple-handlers";
 import { CSSResultGroup, LitElement, TemplateResult, css, html } from "lit";
-import {
-  customElement,
-  eventOptions,
-  property,
-  queryAsync,
-  state,
-} from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import "../components/ha-card";
+import "../components/ha-ripple";
+import "../components/ha-svg-icon";
 
 @customElement("onboarding-welcome-link")
 class OnboardingWelcomeLink extends LitElement {
@@ -17,58 +10,25 @@ class OnboardingWelcomeLink extends LitElement {
 
   @property() public iconPath!: string;
 
-  @queryAsync("mwc-ripple") private _ripple!: Promise<Ripple | null>;
-
-  @state() private _shouldRenderRipple = false;
+  @property({ type: Boolean }) public noninteractive = false;
 
   protected render(): TemplateResult {
     return html`
       <ha-card
-        @focus=${this.handleRippleFocus}
-        @blur=${this.handleRippleBlur}
-        @mousedown=${this.handleRippleActivate}
-        @mouseup=${this.handleRippleDeactivate}
-        @mouseenter=${this.handleRippleMouseEnter}
-        @mouseleave=${this.handleRippleMouseLeave}
-        @touchstart=${this.handleRippleActivate}
-        @touchend=${this.handleRippleDeactivate}
-        @touchcancel=${this.handleRippleDeactivate}
+        .tabIndex=${this.noninteractive ? "-1" : "0"}
+        @keydown=${this._handleKeyDown}
       >
         <ha-svg-icon .path=${this.iconPath}></ha-svg-icon>
         ${this.label}
-        ${this._shouldRenderRipple ? html`<mwc-ripple></mwc-ripple>` : ""}
+        <ha-ripple></ha-ripple>
       </ha-card>
     `;
   }
 
-  private _rippleHandlers: RippleHandlers = new RippleHandlers(() => {
-    this._shouldRenderRipple = true;
-    return this._ripple;
-  });
-
-  private handleRippleMouseEnter() {
-    this._rippleHandlers.startHover();
-  }
-
-  private handleRippleMouseLeave() {
-    this._rippleHandlers.endHover();
-  }
-
-  @eventOptions({ passive: true })
-  private handleRippleActivate(evt?: Event) {
-    this._rippleHandlers.startPress(evt);
-  }
-
-  private handleRippleDeactivate() {
-    this._rippleHandlers.endPress();
-  }
-
-  private handleRippleFocus() {
-    this._rippleHandlers.startFocus();
-  }
-
-  private handleRippleBlur() {
-    this._rippleHandlers.endFocus();
+  private _handleKeyDown(ev: KeyboardEvent): void {
+    if (ev.key === "Enter" || ev.key === " ") {
+      (ev.target as HTMLElement).click();
+    }
   }
 
   static get styles(): CSSResultGroup {
@@ -84,6 +44,7 @@ class OnboardingWelcomeLink extends LitElement {
         text-align: center;
         font-weight: 500;
         padding: 32px 16px;
+        height: 100%;
       }
       ha-svg-icon {
         color: var(--text-primary-color);
@@ -91,6 +52,14 @@ class OnboardingWelcomeLink extends LitElement {
         border-radius: 50%;
         padding: 8px;
         margin-bottom: 16px;
+      }
+      ha-card:focus-visible:before {
+        position: absolute;
+        display: block;
+        content: "";
+        inset: 0;
+        background-color: var(--secondary-text-color);
+        opacity: 0.08;
       }
     `;
   }

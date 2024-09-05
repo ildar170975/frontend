@@ -19,7 +19,7 @@ import "../../components/ha-textfield";
 import {
   DEFAULT_ACCENT_COLOR,
   DEFAULT_PRIMARY_COLOR,
-} from "../../resources/ha-style";
+} from "../../resources/styles-data";
 import { HomeAssistant } from "../../types";
 import { documentationUrl } from "../../util/documentation-url";
 
@@ -30,18 +30,20 @@ const HOME_ASSISTANT_THEME = "default";
 export class HaPickThemeRow extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property({ type: Boolean }) public narrow!: boolean;
+  @property({ type: Boolean }) public narrow = false;
 
   @state() _themeNames: string[] = [];
 
   protected render(): TemplateResult {
     const hasThemes =
       this.hass.themes.themes && Object.keys(this.hass.themes.themes).length;
+
+    const curThemeIsUseDefault = this.hass.selectedTheme?.theme === "";
     const curTheme = this.hass.selectedTheme?.theme
       ? this.hass.selectedTheme?.theme
       : this.hass.themes.darkMode
-      ? this.hass.themes.default_dark_theme || this.hass.themes.default_theme
-      : this.hass.themes.default_theme;
+        ? this.hass.themes.default_dark_theme || this.hass.themes.default_theme
+        : this.hass.themes.default_theme;
 
     const themeSettings = this.hass.selectedTheme;
 
@@ -86,6 +88,9 @@ export class HaPickThemeRow extends LitElement {
         </ha-select>
       </ha-settings-row>
       ${curTheme === HOME_ASSISTANT_THEME ||
+      (curThemeIsUseDefault &&
+        this.hass.themes.default_dark_theme &&
+        this.hass.themes.default_theme) ||
       this._supportsModeSelection(curTheme)
         ? html` <div class="inputs">
             <ha-formfield

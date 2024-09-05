@@ -1,11 +1,9 @@
 import { HassEntity } from "home-assistant-js-websocket";
-import { html, LitElement, PropertyValues, nothing } from "lit";
-import { customElement, property, query } from "lit/decorators";
+import { LitElement, PropertyValues, html, nothing } from "lit";
+import { customElement, property, query, state } from "lit/decorators";
 import { fireEvent } from "../../common/dom/fire_event";
-import { computeStateDisplay } from "../../common/entity/compute_state_display";
 import { getStates } from "../../common/entity/get_states";
-import { computeAttributeValueDisplay } from "../../common/entity/compute_attribute_display";
-import { ValueChangedEvent, HomeAssistant } from "../../types";
+import { HomeAssistant, ValueChangedEvent } from "../../types";
 import "../ha-combo-box";
 import type { HaComboBox } from "../ha-combo-box";
 
@@ -19,7 +17,7 @@ class HaEntityStatePicker extends LitElement {
 
   @property() public attribute?: string;
 
-  @property() public extraOptions?: any[];
+  @property({ attribute: false }) public extraOptions?: any[];
 
   @property({ type: Boolean }) public autofocus = false;
 
@@ -36,7 +34,7 @@ class HaEntityStatePicker extends LitElement {
 
   @property() public helper?: string;
 
-  @property({ type: Boolean }) private _opened = false;
+  @state() private _opened = false;
 
   @query("ha-combo-box", true) private _comboBox!: HaComboBox;
 
@@ -51,27 +49,18 @@ class HaEntityStatePicker extends LitElement {
       changedProps.has("attribute") ||
       changedProps.has("extraOptions")
     ) {
-      const state = this.entityId ? this.hass.states[this.entityId] : undefined;
+      const stateObj = this.entityId
+        ? this.hass.states[this.entityId]
+        : undefined;
       (this._comboBox as any).items = [
         ...(this.extraOptions ?? []),
-        ...(this.entityId && state
-          ? getStates(state, this.attribute).map((key) => ({
+        ...(this.entityId && stateObj
+          ? getStates(stateObj, this.attribute).map((key) => ({
               value: key,
               label: !this.attribute
-                ? computeStateDisplay(
-                    this.hass.localize,
-                    state,
-                    this.hass.locale,
-                    this.hass.config,
-                    this.hass.entities,
-                    key
-                  )
-                : computeAttributeValueDisplay(
-                    this.hass.localize,
-                    state,
-                    this.hass.locale,
-                    this.hass.config,
-                    this.hass.entities,
+                ? this.hass.formatEntityState(stateObj, key)
+                : this.hass.formatEntityAttributeValue(
+                    stateObj,
                     this.attribute,
                     key
                   ),

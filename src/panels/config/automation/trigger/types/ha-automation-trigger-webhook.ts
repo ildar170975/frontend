@@ -6,6 +6,7 @@ import { customElement, property, state } from "lit/decorators";
 import { fireEvent } from "../../../../../common/dom/fire_event";
 import { slugify } from "../../../../../common/string/slugify";
 import { copyToClipboard } from "../../../../../common/util/copy-clipboard";
+import { stopPropagation } from "../../../../../common/dom/stop_propagation";
 import "../../../../../components/ha-button-menu";
 import "../../../../../components/ha-check-list-item";
 import "../../../../../components/ha-icon-button";
@@ -27,7 +28,7 @@ const DEFAULT_WEBHOOK_ID = "";
 export class HaWebhookTrigger extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public trigger!: WebhookTrigger;
+  @property({ attribute: false }) public trigger!: WebhookTrigger;
 
   @property({ type: Boolean }) public disabled = false;
 
@@ -35,8 +36,9 @@ export class HaWebhookTrigger extends LitElement {
 
   private _unsub?: UnsubscribeFunc;
 
-  public static get defaultConfig() {
+  public static get defaultConfig(): WebhookTrigger {
     return {
+      platform: "webhook",
       allowed_methods: [...DEFAULT_METHODS],
       local_only: true,
       webhook_id: DEFAULT_WEBHOOK_ID,
@@ -122,7 +124,7 @@ export class HaWebhookTrigger extends LitElement {
             .path=${mdiContentCopy}
           ></ha-icon-button>
         </ha-textfield>
-        <ha-button-menu multi>
+        <ha-button-menu multi @closed=${stopPropagation}>
           <ha-icon-button
             slot="trigger"
             .label=${this.hass!.localize(
@@ -216,6 +218,7 @@ export class HaWebhookTrigger extends LitElement {
     ha-textfield > ha-icon-button {
       --mdc-icon-button-size: 24px;
       --mdc-icon-size: 18px;
+      color: var(--secondary-text-color);
     }
 
     ha-button-menu {

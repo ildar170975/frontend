@@ -1,12 +1,14 @@
+import { ActionConfig } from "../../../data/lovelace/config/action";
+import { LovelaceCardConfig } from "../../../data/lovelace/config/card";
 import {
-  ActionConfig,
-  LovelaceCardConfig,
   LovelaceViewConfig,
   ShowViewConfig,
-} from "../../../data/lovelace";
+} from "../../../data/lovelace/config/view";
 import { EntityConfig, LovelaceRowConfig } from "../entity-rows/types";
 import { LovelaceHeaderFooterConfig } from "../header-footer/types";
-import { LovelaceTileFeatureConfig } from "../tile-features/types";
+import { LovelaceCardFeatureConfig } from "../card-features/types";
+import { LovelaceElementConfig } from "../elements/types";
+import { LovelaceBadgeConfig } from "../../../data/lovelace/config/badge";
 
 export interface YamlChangedEvent extends Event {
   detail: {
@@ -62,6 +64,16 @@ export interface Card {
   description?: string;
   showElement?: boolean;
   isCustom?: boolean;
+  isSuggested?: boolean;
+}
+
+export interface Badge {
+  type: string;
+  name?: string;
+  description?: string;
+  showElement?: boolean;
+  isCustom?: boolean;
+  isSuggested?: boolean;
 }
 
 export interface HeaderFooter {
@@ -73,13 +85,18 @@ export interface CardPickTarget extends EventTarget {
   config: LovelaceCardConfig;
 }
 
+export interface BadgePickTarget extends EventTarget {
+  config: LovelaceBadgeConfig;
+}
+
 export interface SubElementEditorConfig {
   index?: number;
   elementConfig?:
     | LovelaceRowConfig
     | LovelaceHeaderFooterConfig
-    | LovelaceTileFeatureConfig;
-  type: "header" | "footer" | "row" | "tile-feature";
+    | LovelaceCardFeatureConfig
+    | LovelaceElementConfig;
+  type: "header" | "footer" | "row" | "feature" | "element";
 }
 
 export interface EditSubElementEvent {

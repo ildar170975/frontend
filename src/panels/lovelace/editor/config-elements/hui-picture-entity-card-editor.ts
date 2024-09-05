@@ -25,13 +25,14 @@ const cardConfigStruct = assign(
     show_name: optional(boolean()),
     show_state: optional(boolean()),
     theme: optional(string()),
+    fit_mode: optional(string()),
   })
 );
 
 const SCHEMA = [
   { name: "entity", required: true, selector: { entity: {} } },
   { name: "name", selector: { text: {} } },
-  { name: "image", selector: { text: {} } },
+  { name: "image", selector: { image: {} } },
   { name: "camera_image", selector: { entity: { domain: "camera" } } },
   {
     name: "",

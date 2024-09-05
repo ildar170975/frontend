@@ -15,12 +15,12 @@ import {
 export class HaEventTrigger extends LitElement implements TriggerElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public trigger!: EventTrigger;
+  @property({ attribute: false }) public trigger!: EventTrigger;
 
   @property({ type: Boolean }) public disabled = false;
 
-  public static get defaultConfig() {
-    return { event_type: "" };
+  public static get defaultConfig(): EventTrigger {
+    return { platform: "event", event_type: "" };
   }
 
   protected render() {

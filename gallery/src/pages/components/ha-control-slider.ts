@@ -9,6 +9,7 @@ const sliders: {
   id: string;
   label: string;
   mode?: "start" | "end" | "cursor";
+  unit?: string;
   class?: string;
 }[] = [
   {
@@ -31,18 +32,21 @@ const sliders: {
     label: "Slider (start mode) and custom style",
     mode: "start",
     class: "custom",
+    unit: "mm",
   },
   {
     id: "slider-end-custom",
     label: "Slider (end mode) and custom style",
     mode: "end",
     class: "custom",
+    unit: "mm",
   },
   {
     id: "slider-cursor-custom",
     label: "Slider (cursor mode) and custom style",
     mode: "cursor",
     class: "custom",
+    unit: "mm",
   },
 ];
 
@@ -93,6 +97,7 @@ export class DemoHaBarSlider extends LitElement {
                 @value-changed=${this.handleValueChanged}
                 @slider-moved=${this.handleSliderMoved}
                 aria-labelledby=${id}
+                .unit=${config.unit}
               >
               </ha-control-slider>
             </div>
@@ -114,6 +119,7 @@ export class DemoHaBarSlider extends LitElement {
                   @value-changed=${this.handleValueChanged}
                   @slider-moved=${this.handleSliderMoved}
                   aria-label=${label}
+                  .unit=${config.unit}
                 >
                 </ha-control-slider>
               `;
@@ -144,8 +150,8 @@ export class DemoHaBarSlider extends LitElement {
         --control-slider-color: #ffcf4c;
         --control-slider-background: #ffcf4c;
         --control-slider-background-opacity: 0.2;
-        --control-slider-thickness: 100px;
-        --control-slider-border-radius: 24px;
+        --control-slider-thickness: 130px;
+        --control-slider-border-radius: 36px;
       }
       .vertical-sliders {
         height: 300px;

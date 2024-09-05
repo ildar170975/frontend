@@ -1,5 +1,4 @@
 import { mdiImageFilterCenterFocus } from "@mdi/js";
-import { isToday } from "date-fns";
 import { HassEntities } from "home-assistant-js-websocket";
 import { LatLngTuple } from "leaflet";
 import {
@@ -14,12 +13,9 @@ import { customElement, property, query, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { getColorByIndex } from "../../../common/color/colors";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
-import { formatDateTime } from "../../../common/datetime/format_date_time";
-import {
-  formatTimeWithSeconds,
-  formatTimeWeekday,
-} from "../../../common/datetime/format_time";
 import { computeDomain } from "../../../common/entity/compute_domain";
+import { computeStateName } from "../../../common/entity/compute_state_name";
+import { deepEqual } from "../../../common/util/deep-equal";
 import parseAspectRatio from "../../../common/util/parse-aspect-ratio";
 import "../../../components/ha-card";
 import "../../../components/ha-alert";
@@ -27,6 +23,7 @@ import "../../../components/ha-icon-button";
 import "../../../components/map/ha-map";
 import type {
   HaMap,
+  HaMapEntity,
   HaMapPathPoint,
   HaMapPaths,
 } from "../../../components/map/ha-map";
@@ -42,18 +39,22 @@ import { HomeAssistant } from "../../../types";
 import { findEntities } from "../common/find-entities";
 import { processConfigEntities } from "../common/process-config-entities";
 import { EntityConfig } from "../entity-rows/types";
-import { LovelaceCard } from "../types";
+import { LovelaceCard, LovelaceLayoutOptions } from "../types";
 import { MapCardConfig } from "./types";
 
 export const DEFAULT_HOURS_TO_SHOW = 0;
 export const DEFAULT_ZOOM = 14;
 
+interface MapEntityConfig extends EntityConfig {
+  label_mode?: "state" | "name";
+  focus?: boolean;
+}
+
 @customElement("hui-map-card")
 class HuiMapCard extends LitElement implements LovelaceCard {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property({ type: Boolean, reflect: true })
-  public isPanel = false;
+  @property({ attribute: false }) public layout?: string;
 
   @state() private _stateHistory?: HistoryStates;
 
@@ -63,7 +64,9 @@ class HuiMapCard extends LitElement implements LovelaceCard {
   @query("ha-map")
   private _map?: HaMap;
 
-  private _configEntities?: string[];
+  private _configEntities?: MapEntityConfig[];
+
+  @state() private _mapEntities: HaMapEntity[] = [];
 
   private _colorDict: Record<string, string> = {};
 
@@ -94,11 +97,10 @@ class HuiMapCard extends LitElement implements LovelaceCard {
     }
 
     this._config = config;
-    this._configEntities = (
-      config.entities
-        ? processConfigEntities<EntityConfig>(config.entities)
-        : []
-    ).map((entity) => entity.entity);
+    this._configEntities = config.entities
+      ? processConfigEntities<MapEntityConfig>(config.entities)
+      : [];
+    this._mapEntities = this._getMapEntities();
   }
 
   public getCardSize(): number {
@@ -135,7 +137,7 @@ class HuiMapCard extends LitElement implements LovelaceCard {
       includeDomains
     );
 
-    return { type: "map", entities: foundEntities };
+    return { type: "map", entities: foundEntities, theme_mode: "auto" };
   }
 
   protected render() {
@@ -148,20 +150,28 @@ class HuiMapCard extends LitElement implements LovelaceCard {
         (${this._error.code})
       </ha-alert>`;
     }
+
+    const isDarkMode =
+      this._config.dark_mode || this._config.theme_mode === "dark"
+        ? true
+        : this._config.theme_mode === "light"
+          ? false
+          : this.hass.themes.darkMode;
+
+    const themeMode =
+      this._config.theme_mode || (this._config.dark_mode ? "dark" : "auto");
+
     return html`
       <ha-card id="card" .header=${this._config.title}>
         <div id="root">
           <ha-map
             .hass=${this.hass}
-            .entities=${this._getEntities(
-              this.hass.states,
-              this._config,
-              this._configEntities
-            )}
+            .entities=${this._mapEntities}
             .zoom=${this._config.default_zoom ?? DEFAULT_ZOOM}
             .paths=${this._getHistoryPaths(this._config, this._stateHistory)}
-            .autoFit=${this._config.auto_fit}
-            .darkMode=${this._config.dark_mode}
+            .autoFit=${this._config.auto_fit || false}
+            .fitZones=${this._config.fit_zones}
+            .themeMode=${themeMode}
             interactiveZones
             renderPassive
           ></ha-map>
@@ -170,6 +180,7 @@ class HuiMapCard extends LitElement implements LovelaceCard {
               "ui.panel.lovelace.cards.map.reset_focus"
             )}
             .path=${mdiImageFilterCenterFocus}
+            style=${isDarkMode ? "color:#ffffff" : "color:#000000"}
             @click=${this._fitMap}
             tabindex="0"
           ></ha-icon-button>
@@ -208,6 +219,20 @@ class HuiMapCard extends LitElement implements LovelaceCard {
       : hasConfigChanged(this, changedProps);
   }
 
+  protected willUpdate(changedProps: PropertyValues): void {
+    super.willUpdate(changedProps);
+    if (
+      changedProps.has("hass") &&
+      this._config?.geo_location_sources &&
+      !deepEqual(
+        this._getSourceEntities(changedProps.get("hass")?.states),
+        this._getSourceEntities(this.hass.states)
+      )
+    ) {
+      this._mapEntities = this._getMapEntities();
+    }
+  }
+
   public connectedCallback() {
     super.connectedCallback();
     if (this.hasUpdated && this._configEntities?.length) {
@@ -238,7 +263,7 @@ class HuiMapCard extends LitElement implements LovelaceCard {
         this._stateHistory = combinedHistory;
       },
       this._config!.hours_to_show! ?? DEFAULT_HOURS_TO_SHOW,
-      this._configEntities!,
+      (this._configEntities || []).map((entity) => entity.entity)!,
       false,
       false,
       false
@@ -271,7 +296,9 @@ class HuiMapCard extends LitElement implements LovelaceCard {
 
   private _computePadding(): void {
     const root = this.shadowRoot!.getElementById("root");
-    if (!this._config || this.isPanel || !root) {
+
+    const ignoreAspectRatio = this.layout === "panel" || this.layout === "grid";
+    if (!this._config || ignoreAspectRatio || !root) {
       return;
     }
 
@@ -305,41 +332,43 @@ class HuiMapCard extends LitElement implements LovelaceCard {
     return color;
   }
 
-  private _getEntities = memoizeOne(
-    (
-      states: HassEntities,
-      config: MapCardConfig,
-      configEntities?: string[]
-    ) => {
-      if (!states || !config) {
-        return undefined;
+  private _getSourceEntities(states?: HassEntities): string[] {
+    if (!states || !this._config?.geo_location_sources) {
+      return [];
+    }
+
+    const geoEntities: string[] = [];
+    // Calculate visible geo location sources
+    const includesAll = this._config.geo_location_sources.includes("all");
+    for (const stateObj of Object.values(states)) {
+      if (
+        computeDomain(stateObj.entity_id) === "geo_location" &&
+        (includesAll ||
+          this._config.geo_location_sources.includes(
+            stateObj.attributes.source
+          ))
+      ) {
+        geoEntities.push(stateObj.entity_id);
       }
+    }
+    return geoEntities;
+  }
 
-      let entities = configEntities || [];
-
-      if (config.geo_location_sources) {
-        const geoEntities: string[] = [];
-        // Calculate visible geo location sources
-        const includesAll = config.geo_location_sources.includes("all");
-        for (const stateObj of Object.values(states)) {
-          if (
-            computeDomain(stateObj.entity_id) === "geo_location" &&
-            (includesAll ||
-              config.geo_location_sources.includes(stateObj.attributes.source))
-          ) {
-            geoEntities.push(stateObj.entity_id);
-          }
-        }
-
-        entities = [...entities, ...geoEntities];
-      }
-
-      return entities.map((entity) => ({
+  private _getMapEntities(): HaMapEntity[] {
+    return [
+      ...(this._configEntities || []).map((entityConf) => ({
+        entity_id: entityConf.entity,
+        color: this._getColor(entityConf.entity),
+        label_mode: entityConf.label_mode,
+        focus: entityConf.focus,
+        name: entityConf.name,
+      })),
+      ...this._getSourceEntities(this.hass?.states).map((entity) => ({
         entity_id: entity,
         color: this._getColor(entity),
-      }));
-    }
-  );
+      })),
+    ];
+  }
 
   private _getHistoryPaths = memoizeOne(
     (
@@ -370,28 +399,23 @@ class HuiMapCard extends LitElement implements LovelaceCard {
           }
           const p = {} as HaMapPathPoint;
           p.point = [latitude, longitude] as LatLngTuple;
-          const t = new Date(entityState.lu * 1000);
-          if ((config.hours_to_show! ?? DEFAULT_HOURS_TO_SHOW) > 144) {
-            // if showing > 6 days in the history trail, show the full
-            // date and time
-            p.tooltip = formatDateTime(t, this.hass.locale, this.hass.config);
-          } else if (isToday(t)) {
-            p.tooltip = formatTimeWithSeconds(
-              t,
-              this.hass.locale,
-              this.hass.config
-            );
-          } else {
-            p.tooltip = formatTimeWeekday(
-              t,
-              this.hass.locale,
-              this.hass.config
-            );
-          }
+          p.timestamp = new Date(entityState.lu * 1000);
           points.push(p);
         }
+
+        const entityConfig = this._configEntities?.find(
+          (e) => e.entity === entityId
+        );
+        const name =
+          entityConfig?.name ??
+          (entityId in this.hass.states
+            ? computeStateName(this.hass.states[entityId])
+            : entityId);
+
         paths.push({
           points,
+          name,
+          fullDatetime: (config.hours_to_show ?? DEFAULT_HOURS_TO_SHOW) > 144,
           color: this._getColor(entityId),
           gradualOpacity: 0.8,
         });
@@ -399,6 +423,15 @@ class HuiMapCard extends LitElement implements LovelaceCard {
       return paths;
     }
   );
+
+  public getLayoutOptions(): LovelaceLayoutOptions {
+    return {
+      grid_columns: "full",
+      grid_rows: 4,
+      grid_min_columns: 2,
+      grid_min_rows: 2,
+    };
+  }
 
   static get styles(): CSSResultGroup {
     return css`

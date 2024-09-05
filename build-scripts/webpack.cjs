@@ -1,10 +1,16 @@
 const { existsSync } = require("fs");
 const path = require("path");
 const webpack = require("webpack");
+const { StatsWriterPlugin } = require("webpack-stats-plugin");
+const filterStats = require("@bundle-stats/plugin-webpack-filter").default;
 const TerserPlugin = require("terser-webpack-plugin");
 const { WebpackManifestPlugin } = require("webpack-manifest-plugin");
 const log = require("fancy-log");
 const WebpackBar = require("webpackbar");
+const {
+  TransformAsyncModulesPlugin,
+} = require("transform-async-modules-webpack-plugin");
+const { dependencies } = require("../package.json");
 const paths = require("./paths.cjs");
 const bundle = require("./bundle.cjs");
 
@@ -49,24 +55,32 @@ const createWebpackConfig = ({
     devtool: isTestBuild
       ? false
       : isProdBuild
-      ? "nosources-source-map"
-      : "eval-cheap-module-source-map",
+        ? "nosources-source-map"
+        : "eval-cheap-module-source-map",
     entry,
     node: false,
     module: {
       rules: [
         {
           test: /\.m?js$|\.ts$/,
-          use: {
+          use: (info) => ({
             loader: "babel-loader",
             options: {
-              ...bundle.babelOptions({ latestBuild, isProdBuild, isTestBuild }),
+              ...bundle.babelOptions({
+                latestBuild,
+                isProdBuild,
+                isTestBuild,
+                sw: info.issuerLayer === "sw",
+              }),
               cacheDirectory: !isProdBuild,
               cacheCompression: false,
             },
-          },
+          }),
           resolve: {
             fullySpecified: false,
+          },
+          parser: {
+            worker: ["*context.audioWorklet.addModule()", "..."],
           },
         },
         {
@@ -86,11 +100,15 @@ const createWebpackConfig = ({
       moduleIds: isProdBuild && !isStatsBuild ? "deterministic" : "named",
       chunkIds: isProdBuild && !isStatsBuild ? "deterministic" : "named",
       splitChunks: {
-        // Disable splitting for web workers with ESM output
-        // Imports of external chunks are broken
-        chunks: latestBuild
-          ? (chunk) => !chunk.canBeInitial() && !/^.+-worker$/.test(chunk.name)
-          : undefined,
+        // Disable splitting for web workers and worklets because imports of
+        // external chunks are broken for:
+        // - ESM output: https://github.com/webpack/webpack/issues/17014
+        // - Worklets use `importScripts`: https://github.com/webpack/webpack/issues/11543
+        chunks: (chunk) =>
+          !chunk.canBeInitial() &&
+          !new RegExp(`^.+-work${latestBuild ? "(?:let|er)" : "let"}$`).test(
+            chunk.name
+          ),
       },
     },
     plugins: [
@@ -140,22 +158,26 @@ const createWebpackConfig = ({
         ),
         path.resolve(paths.polymer_dir, "src/util/empty.js")
       ),
-      // See `src/resources/intl-polyfill-legacy.ts` for explanation
-      !latestBuild &&
-        new webpack.NormalModuleReplacementPlugin(
-          new RegExp(
-            path.resolve(paths.polymer_dir, "src/resources/intl-polyfill.ts")
-          ),
-          path.resolve(
-            paths.polymer_dir,
-            "src/resources/intl-polyfill-legacy.ts"
-          )
-        ),
       !isProdBuild && new LogStartCompilePlugin(),
+      isProdBuild &&
+        new StatsWriterPlugin({
+          filename: path.relative(
+            outputPath,
+            path.join(paths.build_dir, "stats", `${name}.json`)
+          ),
+          stats: { assets: true, chunks: true, modules: true },
+          transform: (stats) => JSON.stringify(filterStats(stats)),
+        }),
+      !latestBuild &&
+        new TransformAsyncModulesPlugin({
+          browserslistEnv: "legacy",
+          runtime: { version: dependencies["@babel/runtime"] },
+        }),
     ].filter(Boolean),
     resolve: {
       extensions: [".ts", ".js", ".json"],
       alias: {
+        "lit/static-html$": "lit/static-html.js",
         "lit/decorators$": "lit/decorators.js",
         "lit/directive$": "lit/directive.js",
         "lit/directives/until$": "lit/directives/until.js",
@@ -165,11 +187,14 @@ const createWebpackConfig = ({
         "lit/directives/guard$": "lit/directives/guard.js",
         "lit/directives/cache$": "lit/directives/cache.js",
         "lit/directives/repeat$": "lit/directives/repeat.js",
+        "lit/directives/live$": "lit/directives/live.js",
         "lit/polyfill-support$": "lit/polyfill-support.js",
         "@lit-labs/virtualizer/layouts/grid":
           "@lit-labs/virtualizer/layouts/grid.js",
         "@lit-labs/virtualizer/polyfills/resize-observer-polyfill/ResizeObserver":
           "@lit-labs/virtualizer/polyfills/resize-observer-polyfill/ResizeObserver.js",
+        "@lit-labs/observers/resize-controller":
+          "@lit-labs/observers/resize-controller.js",
       },
     },
     output: {
@@ -177,11 +202,12 @@ const createWebpackConfig = ({
       filename: ({ chunk }) =>
         !isProdBuild || isStatsBuild || dontHash.has(chunk.name)
           ? "[name].js"
-          : "[name]-[contenthash].js",
+          : "[name].[contenthash].js",
       chunkFilename:
-        isProdBuild && !isStatsBuild ? "[id]-[contenthash].js" : "[name].js",
+        isProdBuild && !isStatsBuild ? "[name].[contenthash].js" : "[name].js",
       assetModuleFilename:
-        isProdBuild && !isStatsBuild ? "[id]-[contenthash][ext]" : "[id][ext]",
+        isProdBuild && !isStatsBuild ? "[id].[contenthash][ext]" : "[id][ext]",
+      crossOriginLoading: "use-credentials",
       hashFunction: "xxhash64",
       hashDigest: "base64url",
       hashDigestLength: 11, // full length of 64 bit base64url
@@ -214,6 +240,7 @@ const createWebpackConfig = ({
       ),
     },
     experiments: {
+      layers: true,
       outputModule: true,
     },
   };

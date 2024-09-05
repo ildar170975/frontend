@@ -13,8 +13,6 @@ import { CSSResultGroup, LitElement, css, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { stopPropagation } from "../../../common/dom/stop_propagation";
-import { computeAttributeValueDisplay } from "../../../common/entity/compute_attribute_display";
-import { computeStateDisplay } from "../../../common/entity/compute_state_display";
 import { computeStateDomain } from "../../../common/entity/compute_state_domain";
 import { supportsFeature } from "../../../common/entity/supports-feature";
 import "../../../components/entity/ha-battery-icon";
@@ -102,7 +100,7 @@ const VACUUM_COMMANDS: VacuumCommand[] = [
 class MoreInfoVacuum extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public stateObj?: VacuumEntity;
+  @property({ attribute: false }) public stateObj?: VacuumEntity;
 
   protected render() {
     if (!this.hass || !this.stateObj) {
@@ -127,21 +125,8 @@ class MoreInfoVacuum extends LitElement {
                 <strong>
                   ${supportsFeature(stateObj, VacuumEntityFeature.STATUS) &&
                   stateObj.attributes.status
-                    ? computeAttributeValueDisplay(
-                        this.hass.localize,
-                        stateObj,
-                        this.hass.locale,
-                        this.hass.config,
-                        this.hass.entities,
-                        "status"
-                      )
-                    : computeStateDisplay(
-                        this.hass.localize,
-                        stateObj,
-                        this.hass.locale,
-                        this.hass.config,
-                        this.hass.entities
-                      )}
+                    ? this.hass.formatEntityAttributeValue(stateObj, "status")
+                    : this.hass.formatEntityState(stateObj)}
                 </strong>
               </span>
             </div>
@@ -157,7 +142,7 @@ class MoreInfoVacuum extends LitElement {
                   "ui.dialogs.more_info_control.vacuum.commands"
                 )}
               </div>
-              <div class="flex-horizontal">
+              <div class="flex-horizontal space-around">
                 ${VACUUM_COMMANDS.filter((item) =>
                   item.isVisible(stateObj)
                 ).map(
@@ -197,12 +182,8 @@ class MoreInfoVacuum extends LitElement {
                   ${stateObj.attributes.fan_speed_list!.map(
                     (mode) => html`
                       <mwc-list-item .value=${mode}>
-                        ${computeAttributeValueDisplay(
-                          this.hass.localize,
+                        ${this.hass.formatEntityAttributeValue(
                           stateObj,
-                          this.hass.locale,
-                          this.hass.config,
-                          this.hass.entities,
                           "fan_speed",
                           mode
                         )}
@@ -215,12 +196,8 @@ class MoreInfoVacuum extends LitElement {
                 >
                   <span>
                     <ha-svg-icon .path=${mdiFan}></ha-svg-icon>
-                    ${computeAttributeValueDisplay(
-                      this.hass.localize,
+                    ${this.hass.formatEntityAttributeValue(
                       stateObj,
-                      this.hass.locale,
-                      this.hass.config,
-                      this.hass.entities,
                       "fan_speed"
                     )}
                   </span>
@@ -349,6 +326,9 @@ class MoreInfoVacuum extends LitElement {
         display: flex;
         flex-direction: row;
         justify-content: space-between;
+      }
+      .space-around {
+        justify-content: space-around;
       }
     `;
   }

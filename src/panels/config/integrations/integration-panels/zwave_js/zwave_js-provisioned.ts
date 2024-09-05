@@ -18,9 +18,9 @@ import { configTabs } from "./zwave_js-config-router";
 class ZWaveJSProvisioned extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property({ type: Object }) public route!: Route;
+  @property({ attribute: false }) public route!: Route;
 
-  @property({ type: Boolean }) public narrow!: boolean;
+  @property({ type: Boolean }) public narrow = false;
 
   @property() public configEntryId!: string;
 
@@ -41,15 +41,14 @@ class ZWaveJSProvisioned extends LitElement {
   }
 
   private _columns = memoizeOne(
-    (narrow: boolean): DataTableColumnContainer => ({
+    (narrow: boolean): DataTableColumnContainer<ZwaveJSProvisioningEntry> => ({
       included: {
         title: this.hass.localize(
           "ui.panel.config.zwave_js.provisioned.included"
         ),
         type: "icon",
-        width: "100px",
-        template: (_info, provisioningEntry: any) =>
-          provisioningEntry.additional_properties.nodeId
+        template: (entry) =>
+          entry.nodeId
             ? html`
                 <ha-svg-icon
                   .label=${this.hass.localize(
@@ -71,38 +70,38 @@ class ZWaveJSProvisioned extends LitElement {
         title: this.hass.localize("ui.panel.config.zwave_js.provisioned.dsk"),
         sortable: true,
         filterable: true,
-        grows: true,
+        flex: 2,
       },
       security_classes: {
         title: this.hass.localize(
           "ui.panel.config.zwave_js.provisioned.security_classes"
         ),
-        width: "30%",
         hidden: narrow,
         filterable: true,
         sortable: true,
-        template: (securityClasses: SecurityClass[]) =>
-          securityClasses
+        template: (entry) => {
+          const securityClasses = entry.securityClasses;
+          return securityClasses
             .map((secClass) =>
               this.hass.localize(
                 `ui.panel.config.zwave_js.security_classes.${SecurityClass[secClass]}.title`
               )
             )
-            .join(", "),
+            .join(", ");
+        },
       },
       unprovision: {
         title: this.hass.localize(
           "ui.panel.config.zwave_js.provisioned.unprovison"
         ),
         type: "icon-button",
-        width: "100px",
-        template: (_info, provisioningEntry: any) => html`
+        template: (entry) => html`
           <ha-icon-button
             .label=${this.hass.localize(
               "ui.panel.config.zwave_js.provisioned.unprovison"
             )}
             .path=${mdiDelete}
-            .provisioningEntry=${provisioningEntry}
+            .provisioningEntry=${entry}
             @click=${this._unprovision}
           ></ha-icon-button>
         `,

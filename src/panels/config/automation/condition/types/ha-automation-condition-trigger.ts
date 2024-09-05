@@ -1,10 +1,11 @@
 import "@material/mwc-list/mwc-list-item";
-import memoizeOne from "memoize-one";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
 import { html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
-import { fireEvent } from "../../../../../common/dom/fire_event";
+import memoizeOne from "memoize-one";
 import { ensureArray } from "../../../../../common/array/ensure-array";
+import { fireEvent } from "../../../../../common/dom/fire_event";
+import "../../../../../components/ha-form/ha-form";
 import type { SchemaUnion } from "../../../../../components/ha-form/types";
 import "../../../../../components/ha-select";
 import type {
@@ -26,8 +27,9 @@ export class HaTriggerCondition extends LitElement {
 
   private _unsub?: UnsubscribeFunc;
 
-  public static get defaultConfig() {
+  public static get defaultConfig(): TriggerCondition {
     return {
+      condition: "trigger",
       id: "",
     };
   }

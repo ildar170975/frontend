@@ -10,10 +10,12 @@ import { mockHassioSupervisor } from "../../../../demo/src/stubs/hassio_supervis
 import { computeInitialHaFormData } from "../../../../src/components/ha-form/compute-initial-ha-form-data";
 import "../../../../src/components/ha-form/ha-form";
 import type { HaFormSchema } from "../../../../src/components/ha-form/types";
+import type { AreaRegistryEntry } from "../../../../src/data/area_registry";
 import { getEntity } from "../../../../src/fake_data/entity";
 import { provideHass } from "../../../../src/fake_data/provide_hass";
 import { HomeAssistant } from "../../../../src/types";
 import "../../components/demo-black-white-row";
+import { DeviceRegistryEntry } from "../../../../src/data/device_registry";
 
 const ENTITIES = [
   getEntity("alarm_control_panel", "alarm", "disarmed", {
@@ -40,7 +42,7 @@ const ENTITIES = [
   }),
 ];
 
-const DEVICES = [
+const DEVICES: DeviceRegistryEntry[] = [
   {
     area_id: "bedroom",
     configuration_url: null,
@@ -52,11 +54,16 @@ const DEVICES = [
     identifiers: [["demo", "volume1"] as [string, string]],
     manufacturer: null,
     model: null,
+    model_id: null,
     name_by_user: null,
     name: "Dishwasher",
     sw_version: null,
     hw_version: null,
     via_device_id: null,
+    serial_number: null,
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: "backyard",
@@ -69,11 +76,16 @@ const DEVICES = [
     identifiers: [["demo", "pwm1"] as [string, string]],
     manufacturer: null,
     model: null,
+    model_id: null,
     name_by_user: null,
     name: "Lamp",
     sw_version: null,
     hw_version: null,
     via_device_id: null,
+    serial_number: null,
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: null,
@@ -86,32 +98,52 @@ const DEVICES = [
     identifiers: [["demo", "pwm1"] as [string, string]],
     manufacturer: null,
     model: null,
+    model_id: null,
     name_by_user: "User name",
     name: "Technical name",
     sw_version: null,
     hw_version: null,
     via_device_id: null,
+    serial_number: null,
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
 ];
 
-const AREAS = [
+const AREAS: AreaRegistryEntry[] = [
   {
     area_id: "backyard",
+    floor_id: null,
     name: "Backyard",
+    icon: null,
     picture: null,
     aliases: [],
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: "bedroom",
+    floor_id: null,
     name: "Bedroom",
+    icon: "mdi:bed",
     picture: null,
     aliases: [],
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
   {
     area_id: "livingroom",
+    floor_id: null,
     name: "Livingroom",
+    icon: "mdi:sofa",
     picture: null,
     aliases: [],
+    labels: [],
+    created_at: 0,
+    modified_at: 0,
   },
 ];
 

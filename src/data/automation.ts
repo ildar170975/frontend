@@ -6,7 +6,7 @@ import { navigate } from "../common/navigate";
 import { Context, HomeAssistant } from "../types";
 import { BlueprintInput } from "./blueprint";
 import { DeviceCondition, DeviceTrigger } from "./device_automation";
-import { Action, MODES } from "./script";
+import { Action, MODES, migrateAutomationAction } from "./script";
 
 export const AUTOMATION_DEFAULT_MODE: (typeof MODES)[number] = "single";
 export const AUTOMATION_DEFAULT_MAX = 10;
@@ -28,7 +28,7 @@ export interface ManualAutomationConfig {
   description?: string;
   trigger: Trigger | Trigger[];
   condition?: Condition | Condition[];
-  action: Action | Action[];
+  action?: Action | Action[];
   mode?: (typeof MODES)[number];
   max?: number;
   max_exceeded?:
@@ -74,8 +74,8 @@ export interface StateTrigger extends BaseTrigger {
   platform: "state";
   entity_id: string | string[];
   attribute?: string;
-  from?: string | number;
-  to?: string | string[] | number;
+  from?: string | string[];
+  to?: string | string[];
   for?: string | number | ForDict;
 }
 
@@ -99,7 +99,7 @@ export interface HassTrigger extends BaseTrigger {
 
 export interface NumericStateTrigger extends BaseTrigger {
   platform: "numeric_state";
-  entity_id: string;
+  entity_id: string | string[];
   attribute?: string;
   above?: number;
   below?: number;
@@ -219,8 +219,8 @@ export interface NumericStateCondition extends BaseCondition {
   condition: "numeric_state";
   entity_id: string;
   attribute?: string;
-  above?: number;
-  below?: number;
+  above?: string | number;
+  below?: string | number;
   value_template?: string;
 }
 
@@ -238,11 +238,13 @@ export interface ZoneCondition extends BaseCondition {
   zone: string;
 }
 
+type Weekday = "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat";
+
 export interface TimeCondition extends BaseCondition {
   condition: "time";
   after?: string;
   before?: string;
-  weekday?: string | string[];
+  weekday?: Weekday | Weekday[];
 }
 
 export interface TemplateCondition extends BaseCondition {
@@ -271,6 +273,10 @@ export interface ShorthandOrCondition extends ShorthandBaseCondition {
 
 export interface ShorthandNotCondition extends ShorthandBaseCondition {
   not: Condition[];
+}
+
+export interface AutomationElementGroup {
+  [key: string]: { icon?: string; members?: AutomationElementGroup };
 }
 
 export type Condition =
@@ -326,7 +332,7 @@ export const triggerAutomationActions = (
 export const deleteAutomation = (hass: HomeAssistant, id: string) =>
   hass.callApi("DELETE", `config/automation/config/${id}`);
 
-let inititialAutomationEditorData: Partial<AutomationConfig> | undefined;
+let initialAutomationEditorData: Partial<AutomationConfig> | undefined;
 
 export const fetchAutomationFileConfig = (hass: HomeAssistant, id: string) =>
   hass.callApi<AutomationConfig>("GET", `config/automation/config/${id}`);
@@ -346,8 +352,29 @@ export const saveAutomationConfig = (
   config: AutomationConfig
 ) => hass.callApi<void>("POST", `config/automation/config/${id}`, config);
 
+export const normalizeAutomationConfig = <
+  T extends Partial<AutomationConfig> | AutomationConfig,
+>(
+  config: T
+): T => {
+  // Normalize data: ensure triggers, actions and conditions are lists
+  // Happens when people copy paste their automations into the config
+  for (const key of ["trigger", "condition", "action"]) {
+    const value = config[key];
+    if (value && !Array.isArray(value)) {
+      config[key] = [value];
+    }
+  }
+
+  if (config.action) {
+    config.action = migrateAutomationAction(config.action);
+  }
+
+  return config;
+};
+
 export const showAutomationEditor = (data?: Partial<AutomationConfig>) => {
-  inititialAutomationEditorData = data;
+  initialAutomationEditorData = data;
   navigate("/config/automation/edit/new");
 };
 
@@ -360,8 +387,8 @@ export const duplicateAutomation = (config: AutomationConfig) => {
 };
 
 export const getAutomationEditorInitData = () => {
-  const data = inititialAutomationEditorData;
-  inititialAutomationEditorData = undefined;
+  const data = initialAutomationEditorData;
+  initialAutomationEditorData = undefined;
   return data;
 };
 
