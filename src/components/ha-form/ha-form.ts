@@ -73,6 +73,10 @@ export class HaForm extends LitElement implements HaFormElement {
     schema: any
   ) => string | undefined;
 
+  @property({ attribute: false }) public localizeValue?: (
+    key: string
+  ) => string;
+
   protected getFormProperties(): Record<string, any> {
     return {};
   }
@@ -145,6 +149,7 @@ export class HaForm extends LitElement implements HaFormElement {
                   .disabled=${item.disabled || this.disabled || false}
                   .placeholder=${item.required ? "" : item.default}
                   .helper=${this._computeHelper(item)}
+                  .localizeValue=${this.localizeValue}
                   .required=${item.required || false}
                   .context=${this._generateContext(item)}
                 ></ha-selector>`
@@ -158,6 +163,7 @@ export class HaForm extends LitElement implements HaFormElement {
                   localize: this.hass?.localize,
                   computeLabel: this.computeLabel,
                   computeHelper: this.computeHelper,
+                  localizeValue: this.localizeValue,
                   context: this._generateContext(item),
                   ...this.getFormProperties(),
                 })}

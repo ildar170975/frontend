@@ -57,6 +57,9 @@ class StateDisplay extends LitElement {
 
   @property({ attribute: false }) public name?: string;
 
+  @property({ type: Boolean, attribute: "dash-unavailable" })
+  public dashUnavailable?: boolean;
+
   protected createRenderRoot() {
     return this;
   }
@@ -73,6 +76,9 @@ class StateDisplay extends LitElement {
     const domain = computeStateDomain(stateObj);
 
     if (content === "state") {
+      if (this.dashUnavailable && isUnavailableState(stateObj.state)) {
+        return "—";
+      }
       if (
         (stateObj.attributes.device_class === SENSOR_DEVICE_CLASS_TIMESTAMP ||
           TIMESTAMP_STATE_DOMAINS.includes(domain)) &&
@@ -99,6 +105,7 @@ class StateDisplay extends LitElement {
         <ha-relative-time
           .hass=${this.hass}
           .datetime=${stateObj.last_changed}
+          capitalize
         ></ha-relative-time>
       `;
     }
@@ -108,6 +115,7 @@ class StateDisplay extends LitElement {
         <ha-relative-time
           .hass=${this.hass}
           .datetime=${stateObj.last_updated}
+          capitalize
         ></ha-relative-time>
       `;
     }
@@ -116,6 +124,7 @@ class StateDisplay extends LitElement {
         <ha-relative-time
           .hass=${this.hass}
           .datetime=${stateObj.attributes.last_triggered}
+          capitalize
         ></ha-relative-time>
       `;
     }
