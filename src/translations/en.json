@@ -1635,7 +1635,8 @@
           "zigbee_information": "View the Zigbee information for the device."
         },
         "confirmations": {
-          "remove": "Are you sure that you want to remove the device?"
+          "remove_title": "Remove device",
+          "remove_text": "This device will be permanently removed from the Zigbee network."
         },
         "quirk": "Quirk",
         "last_seen": "Last seen",
@@ -2810,7 +2811,7 @@
             "migrate": "Migrate",
             "duplicate": "[%key:ui::common::duplicate%]",
             "take_control": "Take control",
-            "confirm_take_control": "Your are viewing a preview of the automation config, do you want to take control?",
+            "confirm_take_control": "You are viewing a preview of the automation config, do you want to take control?",
             "run": "[%key:ui::panel::config::automation::editor::actions::run%]",
             "rename": "[%key:ui::panel::config::automation::editor::triggers::rename%]",
             "show_trace": "Traces",
@@ -3053,6 +3054,9 @@
                   "type_input": "Value of a date/time helper or timestamp-class sensor",
                   "label": "Time",
                   "at": "At time",
+                  "offset": "[%key:ui::panel::config::automation::editor::triggers::type::sun::offset%]",
+                  "entity": "Entity with timestamp",
+                  "offset_by": "offset by {offset}",
                   "mode": "Mode",
                   "description": {
                     "picker": "At a specific time, or on a specific date.",
@@ -3684,16 +3688,13 @@
           "editor": {
             "alias": "Name",
             "icon": "Icon",
-            "id": "Entity ID",
-            "id_already_exists_save_error": "You can't save this script because the ID is not unique, pick another ID or leave it blank to automatically generate one.",
-            "id_already_exists": "This ID already exists",
             "introduction": "Use scripts to run a sequence of actions.",
             "show_trace": "[%key:ui::panel::config::automation::editor::show_trace%]",
             "show_info": "[%key:ui::panel::config::automation::editor::show_info%]",
             "rename": "[%key:ui::panel::config::automation::editor::triggers::rename%]",
             "change_mode": "[%key:ui::panel::config::automation::editor::change_mode%]",
             "take_control": "[%key:ui::panel::config::automation::editor::take_control%]",
-            "confirm_take_control": "Your are viewing a preview of the script config, do you want to take control?",
+            "confirm_take_control": "You are viewing a preview of the script config, do you want to take control?",
             "read_only": "This script cannot be edited from the UI, because it is not stored in the ''scripts.yaml'' file.",
             "unavailable": "Script is unavailable",
             "migrate": "Migrate",
@@ -6131,7 +6132,8 @@
             "todo-list": {
               "name": "To-do list",
               "description": "The to-do list card allows you to add, edit, check-off, and clear items from your to-do list.",
-              "integration_not_loaded": "This card requires the `todo` integration to be set up."
+              "integration_not_loaded": "This card requires the `todo` integration to be set up.",
+              "hide_completed": "Hide completed items"
             },
             "thermostat": {
               "name": "Thermostat",
