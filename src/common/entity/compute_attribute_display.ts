@@ -30,6 +30,9 @@ export const computeAttributeValueDisplay = (
   attribute: string,
   value?: any
 ): string => {
+ // eslint-disable-next-line no-console
+  console.log("computeAttributeValueDisplay()");
+  
   const attributeValue =
     value !== undefined ? value : stateObj.attributes[attribute];
 
