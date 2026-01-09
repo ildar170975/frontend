@@ -9,7 +9,7 @@ export const getAssistantsTableColumn = (
   hass: HomeAssistant,
   availableAssistants: string[],
   entitiesToCheck?: any[]
-): DataTableColumnData => ({
+): DataTableColumnData<any> => ({
   title: localize("ui.panel.config.voice_assistants.expose.headers.assistants"),
   type: "flex",
   defaultHidden: true,
