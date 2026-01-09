@@ -63,7 +63,6 @@ import {
   createCategoryRegistryEntry,
   subscribeCategoryRegistry,
 } from "../../../data/category_registry";
-import type { CloudStatus } from "../../../data/cloud";
 import type { ConfigEntry } from "../../../data/config_entries";
 import {
   ERROR_STATES,
@@ -124,8 +123,7 @@ import { showLabelDetailDialog } from "../labels/show-dialog-label-detail";
 import { isHelperDomain, type HelperDomain } from "./const";
 import { showHelperDetailDialog } from "./show-dialog-helper-detail";
 import { getEntityVoiceAssistantsKeys } from "../../../data/expose";
-import { getAvailableAssistants } from "../voice-assistants/expose/available-assistants";
-import { getAssistantsTableColumn } from "../voice-assistants/expose/assistants-table-column";
+import "../voice-assistants/expose/expose-assistant-icon";
 
 interface HelperItem {
   id: string;
@@ -139,7 +137,6 @@ interface HelperItem {
   category: string | undefined;
   area?: string;
   label_entries: LabelRegistryEntry[];
-  assistants: string[];
   disabled?: boolean;
 }
 
@@ -173,8 +170,6 @@ export class HaConfigHelpers extends SubscribeMixin(LitElement) {
   @property({ type: Boolean }) public narrow = false;
 
   @property({ attribute: false }) public route!: Route;
-
-  @property({ attribute: false }) public cloudStatus?: CloudStatus;
 
   @storage({ key: "helpers-table-sort", state: false, subscribe: false })
   private _activeSorting?: SortingChangedEvent;
@@ -258,10 +253,6 @@ export class HaConfigHelpers extends SubscribeMixin(LitElement) {
     callback: (entries) => entries[0]?.contentRect.width,
   });
 
-  private get _availableAssistants() {
-    return getAvailableAssistants(this.cloudStatus);
-  }
-
   private _debouncedFetchEntitySources = debounce(
     () => this._fetchEntitySources(),
     500,
@@ -314,10 +305,7 @@ export class HaConfigHelpers extends SubscribeMixin(LitElement) {
   }
 
   private _columns = memoizeOne(
-    (
-      localize: LocalizeFunc,
-      entitiesToCheck?: any[]
-    ): DataTableColumnContainer<HelperItem> => ({
+    (localize: LocalizeFunc): DataTableColumnContainer<HelperItem> => ({
       icon: {
         title: "",
         label: localize("ui.panel.config.helpers.picker.headers.icon"),
@@ -494,12 +482,32 @@ export class HaConfigHelpers extends SubscribeMixin(LitElement) {
           </ha-icon-overflow-menu>
         `,
       },
-      assistants: getAssistantsTableColumn(
-        localize,
-        this.hass,
-        this._availableAssistants,
-        entitiesToCheck
-      ),
+      voice_assistants: {
+        title: localize(
+          "ui.panel.config.helpers.picker.headers.voice_assistants"
+        ),
+        type: "icon",
+        defaultHidden: true,
+        minWidth: "100px",
+        maxWidth: "100px",
+        template: (helper) => {
+          const exposedToVoiceAssistantKeys = getEntityVoiceAssistantsKeys(
+            this._entityReg,
+            helper.entity_id
+          );
+          return html` ${exposedToVoiceAssistantKeys.length !== 0
+            ? exposedToVoiceAssistantKeys.map(
+                (vaKey) => html`
+                  <voice-assistants-expose-assistant-icon
+                    .assistant=${vaKey}
+                    .hass=${this.hass}
+                  >
+                  </voice-assistants-expose-assistant-icon>
+                `
+              )
+            : "—"}`;
+        },
+      },
     })
   );
 
@@ -613,8 +621,7 @@ export class HaConfigHelpers extends SubscribeMixin(LitElement) {
             category: category
               ? categoryReg?.find((cat) => cat.category_id === category)?.name
               : undefined,
-            area: area,
-            assistants: getEntityVoiceAssistantsKeys(entityReg, item.entity_id),
+            area,
           };
         });
     }
@@ -738,7 +745,7 @@ export class HaConfigHelpers extends SubscribeMixin(LitElement) {
                 Array.isArray(val) ? val.length : val
               )
         ).length}
-        .columns=${this._columns(this.hass.localize, helpers)}
+        .columns=${this._columns(this.hass.localize)}
         .data=${helpers}
         .initialGroupColumn=${this._activeGrouping ?? "category"}
         .initialCollapsedGroups=${this._activeCollapsed}
