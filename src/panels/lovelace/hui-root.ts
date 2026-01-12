@@ -16,6 +16,7 @@ import {
   mdiRobot,
   mdiShape,
   mdiSofa,
+  mdiTrayPlus,
   mdiUndo,
   mdiViewDashboard,
 } from "@mdi/js";
@@ -263,8 +264,7 @@ class HUIRoot extends LitElement {
       {
         icon: mdiPlus,
         key: "ui.panel.lovelace.menu.add",
-        visible:
-          !this._editMode && this.hass.user?.is_admin && !this.hass.kioskMode,
+        visible: !this._editMode && this.hass.user?.is_admin,
         overflow: this.narrow,
         subItems: [
           {
@@ -302,7 +302,7 @@ class HUIRoot extends LitElement {
         key: "ui.panel.lovelace.menu.search_entities",
         buttonAction: this._showQuickBar,
         overflowAction: this._handleShowQuickBar,
-        visible: !this._editMode && !this.hass.kioskMode,
+        visible: !this._editMode,
         overflow: this.narrow,
         suffix:
           this.hass.enableShortcuts && !isMobileClient ? "(E)" : undefined,
@@ -350,8 +350,7 @@ class HUIRoot extends LitElement {
         visible:
           !this._editMode &&
           this.hass!.user?.is_admin &&
-          !this.hass!.config.recovery_mode &&
-          !this.hass.kioskMode,
+          !this.hass!.config.recovery_mode,
         overflow: true,
         overflow_can_promote: true,
       },
@@ -496,10 +495,17 @@ class HUIRoot extends LitElement {
 
     const tabs = html`<ha-tab-group @wa-tab-show=${this._handleViewSelected}>
       ${views.map((view, index) => {
+        const separator = view.separator_type === "separator";
+        const spacer = view.separator_type === "spacer";
         const icon_and_title =
-          view.show_icon_and_title && view.icon && view.title;
-        const icon_only = view.icon && !icon_and_title;
-        const title_only = !icon_only && !icon_and_title;
+          view.show_icon_and_title &&
+          view.icon &&
+          view.title &&
+          !separator &&
+          !spacer;
+        const icon_only = view.icon && !icon_and_title && !separator && !spacer;
+        const title_only =
+          !icon_only && !icon_and_title && !separator && !spacer;
         const hidden =
           !this._editMode && (view.subview || _isTabHiddenForUser(view));
         return html`
@@ -510,6 +516,8 @@ class HUIRoot extends LitElement {
             .disabled=${hidden}
             aria-label=${ifDefined(view.title)}
             class=${classMap({
+              separator: Boolean(separator),
+              spacer: Boolean(spacer),
               "icon-only": Boolean(icon_only),
               "icon-and-title": Boolean(icon_and_title),
               "hide-tab": Boolean(hidden),
@@ -528,6 +536,12 @@ class HUIRoot extends LitElement {
                   ></ha-icon-button-arrow-prev>
                 `
               : nothing}
+            ${separator
+              ? html`<div>
+                  <span></span>
+                </div>`
+              : nothing}
+            ${spacer ? html`<div></div>` : nothing}
             ${icon_only || icon_and_title
               ? html`<ha-icon
                   class=${classMap({
@@ -640,6 +654,15 @@ class HUIRoot extends LitElement {
                         "ui.panel.lovelace.editor.edit_view.add"
                       )}
                       .path=${mdiPlus}
+                    ></ha-icon-button>
+                    <ha-icon-button
+                      slot="nav"
+                      id="add-separator"
+                      @click=${this._addViewSeparator}
+                      .label=${this.hass!.localize(
+                        "ui.panel.lovelace.editor.edit_view.add_separator"
+                      )}
+                      .path=${mdiTrayPlus}
                     ></ha-icon-button>
                   </div>
                 `
@@ -787,8 +810,14 @@ class HUIRoot extends LitElement {
       const views = this.config.views;
 
       if (!viewPath && views.length) {
-        newSelectView = views.findIndex(this._isVisible);
-        this._navigateToView(views[newSelectView].path || newSelectView, true);
+        newSelectView = views
+          .filter((_view) => !_view.separator_type) // ???
+          .findIndex(this._isVisible);
+        if (newSelectView !== -1)
+          this._navigateToView(
+            views[newSelectView].path || newSelectView,
+            true
+          ); // ?????
       } else if (viewPath === "hass-unused-entities") {
         newSelectView = "hass-unused-entities";
       } else if (viewPath) {
@@ -799,6 +828,7 @@ class HUIRoot extends LitElement {
           if (views[i].path === selectedView || i === selectedViewInt) {
             index = i;
             break;
+            // ?????
           }
         }
         newSelectView = index;
@@ -823,7 +853,7 @@ class HUIRoot extends LitElement {
           this.lovelace!.mode === "storage" &&
           viewPath === "hass-unused-entities"
         ) {
-          newSelectView = views.findIndex(this._isVisible);
+          newSelectView = views.findIndex(this._isVisible); // ????
           this._navigateToView(
             views[newSelectView].path || newSelectView,
             true
@@ -836,6 +866,7 @@ class HUIRoot extends LitElement {
       }
     }
 
+    // ???????????????
     if (newSelectView !== undefined || force) {
       if (force && newSelectView === undefined) {
         newSelectView = this._curView;
@@ -928,7 +959,7 @@ class HUIRoot extends LitElement {
       navigate(curViewConfig.back_path, { replace: true });
     } else if (history.length > 1) {
       goBack();
-    } else if (!views[0].subview) {
+    } else if (!views[0].subview && !views[0].separator_type) {
       navigate(this.route!.prefix, { replace: true });
     } else {
       navigate("/");
@@ -1187,6 +1218,7 @@ class HUIRoot extends LitElement {
     });
   }
 
+  // ???? - тк ф-ция вызывается в тч из moveLeft/Right, она должна нормально отрабатывать в editmode
   private _navigateToView(path: string | number, replace?: boolean) {
     const url = this.lovelace!.editMode
       ? `${this.route!.prefix}/${path}?${addSearchParam({ edit: "1" })}`
@@ -1199,9 +1231,11 @@ class HUIRoot extends LitElement {
   }
 
   private _editView() {
+    const _viewIndex = this._curView as number;
     showEditViewDialog(this, {
       lovelace: this.lovelace!,
-      viewIndex: this._curView as number,
+      viewIndex: _viewIndex,
+      viewType: this._isSeparator(_viewIndex) ? "separator" : "view",
       saveCallback: (viewIndex: number, viewConfig: LovelaceViewConfig) => {
         const path = viewConfig.path || viewIndex;
         this._navigateToView(path);
@@ -1239,9 +1273,10 @@ class HUIRoot extends LitElement {
     lovelace.saveConfig(swapView(lovelace.config, oldIndex, newIndex));
   }
 
-  private _addView() {
+  private _addView(viewType?: string) {
     showEditViewDialog(this, {
       lovelace: this.lovelace!,
+      viewType: viewType,
       saveCallback: (viewIndex: number, viewConfig: LovelaceViewConfig) => {
         const path = viewConfig.path || viewIndex;
         this._navigateToView(path);
@@ -1249,9 +1284,21 @@ class HUIRoot extends LitElement {
     });
   }
 
+  private _addViewSeparator() {
+    this._addView("separator");
+  }
+
   private _handleViewSelected(ev) {
     ev.preventDefault();
     const viewIndex = Number(ev.detail.name);
+
+    if (this._isSeparator(viewIndex)) {
+      // ???????????????
+      // eslint-disable-next-line no-console
+      console.log("_handleViewSelected() - separator, %s", viewIndex);
+      return;
+    }
+
     if (viewIndex !== this._curView) {
       const path = this.config.views[viewIndex].path || viewIndex;
       this._navigateToView(path);
@@ -1261,6 +1308,13 @@ class HUIRoot extends LitElement {
   }
 
   private _selectView(viewIndex: HUIRoot["_curView"], force: boolean): void {
+    if (this._isSeparator(viewIndex)) {
+      // ??????
+      // eslint-disable-next-line no-console
+      console.log("_selectView() - separator, %s", viewIndex);
+      return;
+    }
+
     if (!force && this._curView === viewIndex) {
       return;
     }
@@ -1319,6 +1373,14 @@ class HUIRoot extends LitElement {
     view.narrow = this.narrow;
 
     root.appendChild(view);
+  }
+
+  private _isSeparator(viewIndex: number): boolean {
+    return (
+      !this._editMode &&
+      this.config.views.length &&
+      this.config.views[viewIndex].separator_type
+    );
   }
 
   private _openShortcutDialog(ev: Event) {
@@ -1509,19 +1571,70 @@ class HUIRoot extends LitElement {
           padding-top: calc((var(--ha-tab-group-tab-height) - 20px) / 2);
         }
         ha-tab-group-tab.icon-only::part(base),
-        ha-tab-group-tab.icon-and-title::part(base) {
+        ha-tab-group-tab.icon-and-title::part(base),
+        ha-tab-group-tab.separator::part(base),
+        ha-tab-group-tab.spacer::part(base) {
           padding-top: calc((var(--ha-tab-group-tab-height) - 20px) / 2 - 2px);
           padding-bottom: calc(
             (var(--ha-tab-group-tab-height) - 20px) / 2 - 4px
           );
         }
+        ha-tab-group-tab.separator::part(base),
+        ha-tab-group-tab.spacer::part(base) {
+          padding-inline-start: 0;
+          padding-inline-end: 0;
+        }
+
         ha-tab-group-tab.icon-and-title ha-icon {
           margin-inline-end: var(--ha-space-2);
         }
+
+        ha-tab-group-tab.separator div,
+        ha-tab-group-tab.spacer div {
+          height: var(--mdc-icon-size, 24px);
+          width: var(--app-header-sepator-width, var(--ha-space-8));
+          opacity: 0.2;
+        }
+        ha-tab-group-tab.separator div span {
+          display: block;
+          height: inherit;
+          width: var(--app-header-separator-thickness, 2px);
+          justify-self: center;
+          background: var(--app-header-edit-text-color, #fff);
+          border-radius: calc(var(--app-header-separator-thickness, 2px) / 2);
+        }
+        .edit-mode ha-tab-group-tab.separator div,
+        .edit-mode ha-tab-group-tab.spacer div {
+          outline: 1px solid var(--app-header-edit-text-color, #fff);
+          background: repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent var(--ha-space-2),
+            var(--app-header-edit-text-color, #fff) calc(var(--ha-space-2)),
+            var(--app-header-edit-text-color, #fff)
+              calc(var(--ha-space-2) + 1px)
+          );
+        }
+        ha-tab-group-tab.separator::part(base),
+        ha-tab-group-tab.spacer::part(base) {
+          cursor: default;
+        }
+        .edit-mode ha-tab-group-tab::part(base) {
+          cursor: pointer;
+        }
+        ha-tab-group-tab.separator,
+        ha-tab-group-tab.spacer {
+          pointer-events: none;
+        }
+        .edit-mode ha-tab-group-tab {
+          pointer-events: auto;
+        }
+
         .edit-mode ha-tab-group-tab[aria-selected="true"]::part(base) {
           padding: 0;
           margin-top: calc((var(--tab-bar-height, 56px) - 48px) / 2);
         }
+
         .edit-icon {
           color: var(--accent-color);
           padding: 0 8px;
@@ -1535,15 +1648,19 @@ class HUIRoot extends LitElement {
         .edit-icon.view {
           display: none;
         }
-        #add-view {
+
+        #add-view,
+        #add-separator {
           white-space: nowrap;
           display: flex;
           align-items: center;
         }
-        #add-view ha-svg-icon {
+        #add-view ha-svg-icon,
+        #add-separator ha-svg-icon {
           background-color: var(--accent-color);
           border-radius: var(--ha-border-radius-sm);
         }
+
         a {
           color: var(--text-primary-color, white);
         }
