@@ -22,6 +22,7 @@ const dialogTag = "hui-dialog-edit-view";
 export interface EditViewDialogParams {
   lovelace: Lovelace;
   viewIndex?: number;
+  viewType?: string;
   saveCallback?: (viewIndex: number, viewConfig: LovelaceViewConfig) => void;
 }
 
