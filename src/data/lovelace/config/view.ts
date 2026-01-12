@@ -45,7 +45,10 @@ export interface LovelaceViewSidebarConfig {
 }
 
 export interface LovelaceBaseViewConfig {
+  // common views' properties
   index?: number;
+  visible?: boolean | ShowViewConfig[];
+  // view properties
   title?: string;
   path?: string;
   icon?: string;
@@ -53,13 +56,14 @@ export interface LovelaceBaseViewConfig {
   theme?: string;
   panel?: boolean;
   background?: string | LovelaceViewBackgroundConfig;
-  visible?: boolean | ShowViewConfig[];
   subview?: boolean;
   back_path?: string;
   // Only used for section view, it should move to a section view config type when the views will have dedicated editor.
   max_columns?: number;
   dense_section_placement?: boolean;
   top_margin?: boolean;
+  // separator properties
+  separator_type?: "separator" | "spacer";
 }
 
 export interface LovelaceViewConfig extends LovelaceBaseViewConfig {
