@@ -56,6 +56,7 @@ import { showSelectDashboardDialog } from "../select-dashboard/show-select-dashb
 import type { ViewEditEvent, ViewVisibilityChangeEvent } from "../types";
 import "./hui-view-background-editor";
 import "./hui-view-editor";
+import "./hui-view-separator-editor";
 import "./hui-view-visibility-editor";
 import type { EditViewDialogParams } from "./show-edit-view-dialog";
 
@@ -89,6 +90,10 @@ export class HuiDialogEditView extends LitElement {
     return getViewType(this._config);
   }
 
+  get _separator(): boolean {
+    return Boolean(this._config?.separator_type);
+  }
+
   protected updated(changedProperties: PropertyValues) {
     if (this._yamlMode && changedProperties.has("_yamlMode")) {
       const viewConfig = {
@@ -102,10 +107,17 @@ export class HuiDialogEditView extends LitElement {
     this._params = params;
 
     if (this._params.viewIndex === undefined) {
-      this._config = {
-        type: SECTIONS_VIEW_LAYOUT,
-      };
-      this._dirty = false;
+      if (this._params.viewType === "separator") {
+        this._config = {
+          separator_type: "separator",
+        };
+        this._dirty = true;
+      } else {
+        this._config = {
+          type: SECTIONS_VIEW_LAYOUT,
+        };
+        this._dirty = false;
+      }
       return;
     }
 
@@ -119,7 +131,8 @@ export class HuiDialogEditView extends LitElement {
       return;
     }
     this._config = view;
-    this._currentType = this._type;
+    if (!this._params.viewType || this._params.viewType === "view")
+      this._currentType = this._type;
   }
 
   public closeDialog(): void {
@@ -132,6 +145,12 @@ export class HuiDialogEditView extends LitElement {
   }
 
   private get _viewConfigTitle(): string {
+    if (this._separator) {
+      return this.hass!.localize(
+        "ui.panel.lovelace.editor.edit_view.header_separator"
+      );
+    }
+
     if (!this._config || !this._config.title) {
       return this.hass!.localize("ui.panel.lovelace.editor.edit_view.header");
     }
@@ -160,14 +179,22 @@ export class HuiDialogEditView extends LitElement {
     } else {
       switch (this._currTab) {
         case "tab-settings":
-          content = html`
-            <hui-view-editor
-              .isNew=${this._params.viewIndex === undefined}
-              .hass=${this.hass}
-              .config=${this._config}
-              @view-config-changed=${this._viewConfigChanged}
-            ></hui-view-editor>
-          `;
+          content = this._separator
+            ? html`
+                <hui-view-separator-editor
+                  .hass=${this.hass}
+                  .config=${this._config}
+                  @separator-config-changed=${this._viewConfigChanged}
+                ></hui-view-separator-editor>
+              `
+            : html`
+                <hui-view-editor
+                  .isNew=${this._params.viewIndex === undefined}
+                  .hass=${this.hass}
+                  .config=${this._config}
+                  @view-config-changed=${this._viewConfigChanged}
+                ></hui-view-editor>
+              `;
           break;
         case "tab-background":
           content = html`
@@ -190,14 +217,16 @@ export class HuiDialogEditView extends LitElement {
       }
     }
 
-    const convertToSection =
-      this._type === SECTIONS_VIEW_LAYOUT &&
-      this._currentType !== SECTIONS_VIEW_LAYOUT &&
-      this._config?.cards?.length;
-    const convertNotSupported =
-      this._type !== SECTIONS_VIEW_LAYOUT &&
-      this._currentType === SECTIONS_VIEW_LAYOUT &&
-      this._config?.sections?.length;
+    const convertToSection = !this._separator
+      ? this._type === SECTIONS_VIEW_LAYOUT &&
+        this._currentType !== SECTIONS_VIEW_LAYOUT &&
+        this._config?.cards?.length
+      : undefined;
+    const convertNotSupported = !this._separator
+      ? this._type !== SECTIONS_VIEW_LAYOUT &&
+        this._currentType === SECTIONS_VIEW_LAYOUT &&
+        this._config?.sections?.length
+      : undefined;
 
     return html`
       <ha-dialog
@@ -279,7 +308,9 @@ export class HuiDialogEditView extends LitElement {
             : nothing}
           ${!this._yamlMode
             ? html`<ha-tab-group @wa-tab-show=${this._handleTabChanged}>
-                ${TABS.map(
+                ${TABS.filter((tab) =>
+                  this._separator ? tab !== "tab-background" : true
+                ).map(
                   (tab) => html`
                     <ha-tab-group-tab
                       slot="nav"
@@ -508,11 +539,15 @@ export class HuiDialogEditView extends LitElement {
     const named = this._config?.title ? "named" : "unnamed";
 
     const confirm = await showConfirmationDialog(this, {
-      title: this.hass!.localize("ui.panel.lovelace.views.delete_title"),
-      text: this.hass!.localize(
-        `ui.panel.lovelace.views.delete_${named}_view_${type}`,
-        { name: this._config?.title }
-      ),
+      title: this._separator
+        ? this.hass!.localize("ui.panel.lovelace.views.delete_separator_title")
+        : this.hass!.localize("ui.panel.lovelace.views.delete_title"),
+      text: this._separator
+        ? this.hass!.localize(
+            `ui.panel.lovelace.views.delete_${named}_view_${type}`,
+            { name: this._config?.title }
+          )
+        : this.hass!.localize(`ui.panel.lovelace.views.delete_separator`),
       confirmText: this.hass!.localize("ui.common.delete"),
       destructive: true,
     });
@@ -544,11 +579,16 @@ export class HuiDialogEditView extends LitElement {
     const viewConf = {
       ...this._config,
     };
-    // Ensure we have at least one section if we are in sections view
-    if (viewConf.type === SECTIONS_VIEW_LAYOUT && !viewConf.sections?.length) {
-      viewConf.sections = [generateDefaultSection(this.hass!.localize)];
-    } else if (!viewConf.cards?.length) {
-      viewConf.cards = [];
+    if (!this._separator) {
+      // Ensure we have at least one section if we are in sections view
+      if (
+        viewConf.type === SECTIONS_VIEW_LAYOUT &&
+        !viewConf.sections?.length
+      ) {
+        viewConf.sections = [generateDefaultSection(this.hass!.localize)];
+      } else if (!viewConf.cards?.length) {
+        viewConf.cards = [];
+      }
     }
 
     const lovelace = this._params.lovelace!;
