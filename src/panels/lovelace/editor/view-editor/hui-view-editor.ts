@@ -197,6 +197,9 @@ export class HuiViewEditor extends LitElement {
     } else if (config.path && INTEGER_REGEX.test(config.path)) {
       valid = false;
       this._error = { path: "error_number" };
+    } else if (config.separator_type) {
+      valid = false;
+      this._error = { path: "error_unsupported_option_separator" };
     }
 
     fireEvent(this, "view-config-changed", { valid, config });
