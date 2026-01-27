@@ -12,6 +12,7 @@ export const mockFrontend = (hass: MockHomeAssistant) => {
         value: {
           panelOrder: value.panelOrder || [],
           hiddenPanels: value.hiddenPanels || [],
+          pinnedPanels: value.pinnedPanels || [], // ?
         },
       });
     }
@@ -22,6 +23,7 @@ export const mockFrontend = (hass: MockHomeAssistant) => {
       value: {
         panelOrder: [],
         hiddenPanels: [],
+        pinnedPanels: [], // ?
       },
     });
     // eslint-disable-next-line @typescript-eslint/no-empty-function
