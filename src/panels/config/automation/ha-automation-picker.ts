@@ -321,6 +321,7 @@ class HaAutomationPicker extends SubscribeMixin(LitElement) {
               ? html`<ha-data-table-labels
                   @label-clicked=${narrow ? undefined : this._labelClicked}
                   .labels=${automation.labels}
+                  availableWidth="100"
                 ></ha-data-table-labels>`
               : nothing,
         },
@@ -1515,3 +1516,4 @@ declare global {
     "ha-automation-picker": HaAutomationPicker;
   }
 }
+
