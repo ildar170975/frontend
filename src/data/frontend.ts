@@ -9,6 +9,7 @@ export interface CoreFrontendUserData {
 export interface SidebarFrontendUserData {
   panelOrder?: string[];
   hiddenPanels?: string[];
+  pinnedPanels?: string[];
 }
 
 export interface CoreFrontendSystemData {
