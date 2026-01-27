@@ -1314,7 +1314,9 @@
       },
       "items-display-editor": {
         "show": "Show {label}",
-        "hide": "Hide {label}"
+        "hide": "Hide {label}",
+        "pin": "Pin {label}",
+        "unpin": "Unpin {label}"
       },
       "form-optional-actions": {
         "add": "Add interaction"
