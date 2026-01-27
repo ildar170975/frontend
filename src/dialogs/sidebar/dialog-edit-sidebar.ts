@@ -44,6 +44,8 @@ class DialogEditSidebar extends LitElement {
 
   @state() private _hidden?: string[];
 
+  @state() private _pinned?: string[];
+
   @state() private _error?: string;
 
   /**
@@ -61,6 +63,7 @@ class DialogEditSidebar extends LitElement {
       const data = await fetchFrontendUserData(this.hass.connection, "sidebar");
       this._order = data?.panelOrder;
       this._hidden = data?.hiddenPanels;
+      this._pinned = data?.pinnedPanels;
 
       // fallback to old localStorage values
       if (!this._order) {
@@ -72,6 +75,11 @@ class DialogEditSidebar extends LitElement {
         const storedHidden = localStorage.getItem("sidebarHiddenPanels");
         this._migrateToUserData = this._migrateToUserData || !!storedHidden;
         this._hidden = storedHidden ? JSON.parse(storedHidden) : [];
+      }
+      if (!this._pinned) {
+        const storedPinned = localStorage.getItem("sidebarPinnedPanels");
+        this._migrateToUserData = this._migrateToUserData || !!storedPinned;
+        this._pinned = storedPinned ? JSON.parse(storedPinned) : [];
       }
     } catch (err: any) {
       this._error = err.message || err;
@@ -92,7 +100,7 @@ class DialogEditSidebar extends LitElement {
   );
 
   private _renderContent(): TemplateResult {
-    if (!this._order || !this._hidden) {
+    if (!this._order || !this._hidden || !this._pinned) {
       return html`<ha-fade-in .delay=${500}
         ><ha-spinner size="large"></ha-spinner
       ></ha-fade-in>`;
@@ -111,11 +119,13 @@ class DialogEditSidebar extends LitElement {
       defaultPanel,
       this._order,
       this._hidden,
+      this._pinned,
       this.hass.locale
     );
 
     const orderSet = new Set(this._order);
     const hiddenSet = new Set(this._hidden);
+    const pinnedSet = new Set(this._pinned);
 
     for (const panel of panels) {
       if (
@@ -131,9 +141,14 @@ class DialogEditSidebar extends LitElement {
       hiddenSet.delete(defaultPanel);
     }
 
-    const hiddenPanels = Array.from(hiddenSet);
+    if (pinnedSet.has(defaultPanel)) {
+      pinnedSet.delete(defaultPanel);
+    }
 
-    const items = [
+    const hiddenPanels = Array.from(hiddenSet);
+    const pinnedPanels = Array.from(pinnedSet);
+
+    const items: DisplayItem[] = [
       ...beforeSpacer,
       ...panels.filter((panel) => hiddenPanels.includes(panel.url_path)),
       ...afterSpacer,
@@ -146,6 +161,7 @@ class DialogEditSidebar extends LitElement {
       iconPath: getPanelIconPath(panel),
       disableSorting: SHOW_AFTER_SPACER_PANELS.includes(panel.url_path),
       disableHiding: panel.url_path === defaultPanel,
+      disablePinning: panel.url_path === defaultPanel,
     }));
 
     return html`
@@ -154,8 +170,10 @@ class DialogEditSidebar extends LitElement {
         .value=${{
           order: this._order,
           hidden: hiddenPanels,
+          pinned: pinnedPanels,
         }}
         .items=${items}
+        support-pinned
         @value-changed=${this._changed}
         dont-sort-visible
       >
@@ -198,7 +216,7 @@ class DialogEditSidebar extends LitElement {
           </ha-button>
           <ha-button
             slot="primaryAction"
-            .disabled=${!this._order || !this._hidden}
+            .disabled=${!this._order || !this._hidden || !this._pinned}
             @click=${this._save}
           >
             ${this.hass.localize("ui.common.save")}
@@ -209,9 +227,10 @@ class DialogEditSidebar extends LitElement {
   }
 
   private _changed(ev: CustomEvent<{ value: DisplayValue }>): void {
-    const { order = [], hidden = [] } = ev.detail.value;
+    const { order = [], hidden = [], pinned = [] } = ev.detail.value;
     this._order = [...order];
     this._hidden = [...hidden];
+    this._pinned = [...pinned];
   }
 
   private _resetToDefaults = async () => {
@@ -226,6 +245,7 @@ class DialogEditSidebar extends LitElement {
 
     this._order = [];
     this._hidden = [];
+    this._pinned = [];
     try {
       await saveFrontendUserData(this.hass.connection, "sidebar", {});
     } catch (err: any) {
@@ -249,6 +269,7 @@ class DialogEditSidebar extends LitElement {
       await saveFrontendUserData(this.hass.connection, "sidebar", {
         panelOrder: this._order!,
         hiddenPanels: this._hidden!,
+        pinnedPanels: this._pinned!,
       });
     } catch (err: any) {
       this._error = err.message || err;
