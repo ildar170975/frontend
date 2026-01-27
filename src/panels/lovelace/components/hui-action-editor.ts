@@ -75,6 +75,64 @@ const ASSIST_SCHEMA = [
   },
 ] as const satisfies readonly HaFormSchema[];
 
+// export const getExpandableActionsSchema = (
+//   note: string | undefined,
+//   possibleTapActions: string[],
+//   defaultTapAction: string,
+//   optionalActionHandlerDetails?: string[],
+//   possibleOptionalActions?: string[],
+//   defaultOptionalAction?: string
+// ): HaFormSchema => {
+//   const _optionalActionHandlerDetails = optionalActionHandlerDetails || [
+//     "hold_action",
+//     "double_tap_action",
+//   ];
+//   const schema_base = {
+//     name: "interactions",
+//     type: "expandable",
+//     flatten: true,
+//     iconPath: mdiGestureTap,
+//   };
+//   const schema_note = note
+//     ? {
+//         name: note,
+//         type: "string",
+//       }
+//     : undefined;
+
+//   let _schema_actions;
+//   const _schema_tap_action = {
+//     name: "tap_action",
+//     selector: {
+//       ui_action: {
+//         actions: possibleTapActions,
+//         default_action: defaultTapAction,
+//       },
+//     },
+//   };
+//   if (optionalActionHandlerDetails.length) {
+//     const schema_optional_actions = {
+//       name: "",
+//       type: "optional_actions",
+//       flatten: true,
+//       schema: (optionalActionHandlerDetails as const).map((action) => ({
+//         name: action,
+//         selector: {
+//           ui_action: {
+//             actions: possibleOptionalActions!,
+//             default_action: defaultOptionalAction! as const,
+//           },
+//         },
+//       })),
+//     };
+//     schema_actions = [...schema_tap_action, ...schema_optional_actions];
+//   } else {
+//     schema_actions = [schema_tap_action];
+//   }
+//   const schema = { ...schema_base, schema: schema_actions };
+//   return schema;
+// };
+
 @customElement("hui-action-editor")
 export class HuiActionEditor extends LitElement {
   @property({ attribute: false }) public config?: ActionConfig;
