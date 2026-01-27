@@ -1,6 +1,7 @@
 import type { CSSResultGroup, TemplateResult } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators";
+// import { ifDefined } from "lit/directives/if-defined";
 import { uid } from "../common/util/uid";
 import "./ha-tooltip";
 
@@ -10,6 +11,8 @@ class HaLabel extends LitElement {
 
   @property({ attribute: "description" })
   public description?: string;
+
+  // public maxWidth?: number = undefined;
 
   private _elementId = "label-" + uid();
 
@@ -24,11 +27,12 @@ class HaLabel extends LitElement {
       <div class="container" .id=${this._elementId}>
         <span class="content">
           <slot name="icon"></slot>
-          <slot></slot>
+          <slot name="name"></slot>
         </span>
       </div>
     `;
   }
+  // style="max-width: ${ifDefined(this.maxWidth)}px"
 
   static get styles(): CSSResultGroup {
     return [
