@@ -72,7 +72,6 @@ import {
 } from "../../dialogs/generic/show-dialog-box";
 import { showMoreInfoDialog } from "../../dialogs/more-info/show-ha-more-info-dialog";
 import { showQuickBar } from "../../dialogs/quick-bar/show-dialog-quick-bar";
-import { showShortcutsDialog } from "../../dialogs/shortcuts/show-shortcuts-dialog";
 import { showVoiceCommandDialog } from "../../dialogs/voice-command-dialog/show-ha-voice-command-dialog";
 import { haStyle } from "../../resources/styles";
 import type { HomeAssistant, PanelInfo } from "../../types";
@@ -145,6 +144,10 @@ class HUIRoot extends LitElement {
   @property({ attribute: false }) public extraActionItems?: ExtraActionItem[];
 
   @property({ type: Boolean, attribute: "no-edit" }) public noEdit = false;
+
+  @property({ attribute: false }) public backButton = false;
+
+  @property({ attribute: false }) public backPath?: string;
 
   @state() private _curView?: number | "hass-unused-entities";
 
@@ -270,28 +273,27 @@ class HUIRoot extends LitElement {
             key: "ui.panel.lovelace.menu.add_device",
             visible: true,
             action: this._addDevice,
-            overflowAction: this._handleAddDevice,
+            overflowAction: this._addDevice,
           },
           {
             icon: mdiRobot,
             key: "ui.panel.lovelace.menu.create_automation",
             visible: true,
             action: this._createAutomation,
-            overflowAction: this._handleCreateAutomation,
           },
           {
             icon: mdiSofa,
             key: "ui.panel.lovelace.menu.create_area",
             visible: true,
             action: this._createArea,
-            overflowAction: this._handleCreateArea,
+            overflowAction: this._createArea,
           },
           {
             icon: mdiAccount,
             key: "ui.panel.lovelace.menu.add_person",
             visible: true,
             action: this._addPerson,
-            overflowAction: this._handleAddPerson,
+            overflowAction: this._addPerson,
           },
         ],
       },
@@ -567,7 +569,7 @@ class HUIRoot extends LitElement {
                     <div class="action-items">${this._renderActionItems()}</div>
                   `
                 : html`
-                    ${isSubview
+                    ${isSubview || this.backButton
                       ? html`
                           <ha-icon-button-arrow-prev
                             .hass=${this.hass}
@@ -840,11 +842,11 @@ class HUIRoot extends LitElement {
     return this.shadowRoot!.getElementById("view") as HTMLDivElement;
   }
 
-  private _handleRefresh(): void {
+  private _handleRefresh = () => {
     fireEvent(this, "config-refresh");
-  }
+  };
 
-  private _handleReloadResources(): void {
+  private _handleReloadResources = () => {
     this.hass.callService("lovelace", "reload_resources");
     showConfirmationDialog(this, {
       title: this.hass!.localize(
@@ -857,20 +859,10 @@ class HUIRoot extends LitElement {
       dismissText: this.hass.localize("ui.common.not_now"),
       confirm: () => location.reload(),
     });
-  }
+  };
 
   private _showQuickBar = () => {
-    const params = {
-      keyboard_shortcut: html`<a href="#" @click=${this._openShortcutDialog}
-        >${this.hass.localize("ui.tips.keyboard_shortcut")}</a
-      >`,
-    };
-
-    showQuickBar(this, {
-      hint: this.hass.enableShortcuts
-        ? this.hass.localize("ui.tips.key_e_tip", params)
-        : undefined,
-    });
+    showQuickBar(this, { showHint: true });
   };
 
   private _goBack(): void {
@@ -880,6 +872,8 @@ class HUIRoot extends LitElement {
 
     if (curViewConfig?.back_path != null) {
       navigate(curViewConfig.back_path, { replace: true });
+    } else if (this.backPath) {
+      navigate(this.backPath, { replace: true });
     } else if (history.length > 1) {
       goBack();
     } else if (!views[0].subview) {
@@ -889,27 +883,15 @@ class HUIRoot extends LitElement {
     }
   }
 
-  private _handleAddDevice(): void {
-    this._addDevice();
-  }
-
   private _addDevice = async () => {
     await this.hass.loadFragmentTranslation("config");
     showAddIntegrationDialog(this, { navigateToResult: true });
   };
 
-  private _handleCreateAutomation(): void {
-    this._createAutomation();
-  }
-
   private _createAutomation = async () => {
     await this.hass.loadFragmentTranslation("config");
     showNewAutomationDialog(this, { mode: "automation" });
   };
-
-  private _handleCreateArea(): void {
-    this._createArea();
-  }
 
   private _createArea = async () => {
     await this.hass.loadFragmentTranslation("config");
@@ -935,10 +917,6 @@ class HUIRoot extends LitElement {
       },
     });
   };
-
-  private _handleAddPerson(): void {
-    this._addPerson();
-  }
 
   private _addPerson = async () => {
     await this.hass.loadFragmentTranslation("config");
@@ -967,13 +945,13 @@ class HUIRoot extends LitElement {
     this.lovelace!.enableFullEditMode();
   };
 
-  private _handleManageDashboards(): void {
+  private _handleManageDashboards = () => {
     navigate("/config/lovelace/dashboards");
-  }
+  };
 
-  private _handleManageResources(): void {
+  private _handleManageResources = () => {
     navigate("/config/lovelace/resources");
-  }
+  };
 
   private _handleUnusedEntities = () => {
     navigate(`${this.route?.prefix}/hass-unused-entities`);
@@ -1231,11 +1209,6 @@ class HUIRoot extends LitElement {
     root.appendChild(view);
   }
 
-  private _openShortcutDialog(ev: Event) {
-    ev.preventDefault();
-    showShortcutsDialog(this);
-  }
-
   private async _applyUndoRedo(item: UndoStackItem) {
     this._configChangedByUndo = true;
     try {
@@ -1305,7 +1278,6 @@ class HUIRoot extends LitElement {
         .header {
           background-color: var(--app-header-background-color);
           color: var(--app-header-text-color, white);
-          border-bottom: var(--app-header-border-bottom, none);
           position: fixed;
           top: 0;
           width: calc(
@@ -1343,6 +1315,7 @@ class HUIRoot extends LitElement {
           color: var(--app-header-edit-text-color, white);
         }
         .toolbar {
+          border-bottom: var(--app-header-border-bottom, none);
           height: var(--header-height);
           display: flex;
           align-items: center;
@@ -1351,11 +1324,14 @@ class HUIRoot extends LitElement {
           font-weight: var(--ha-font-weight-normal);
           box-sizing: border-box;
         }
+        .edit-mode .toolbar {
+          border-bottom: none;
+        }
         .narrow .toolbar {
           padding: 0 4px;
         }
         .main-title {
-          margin: var(--margin-title);
+          margin-inline-start: var(--ha-space-6);
           line-height: var(--ha-line-height-normal);
           flex-grow: 1;
           text-overflow: ellipsis;
@@ -1364,8 +1340,7 @@ class HUIRoot extends LitElement {
           min-width: 0;
         }
         .narrow .main-title {
-          margin: 0;
-          margin-inline-start: 8px;
+          margin-inline-start: var(--ha-space-2);
         }
         .action-items {
           white-space: nowrap;
@@ -1489,7 +1464,10 @@ class HUIRoot extends LitElement {
           display: flex;
           min-height: 100vh;
           box-sizing: border-box;
-          padding-top: calc(var(--header-height) + var(--safe-area-inset-top));
+          padding-top: calc(
+            var(--header-height) + var(--safe-area-inset-top) +
+              var(--view-container-padding-top, 0px)
+          );
           padding-right: var(--safe-area-inset-right);
           padding-inline-end: var(--safe-area-inset-right);
           padding-bottom: calc(
