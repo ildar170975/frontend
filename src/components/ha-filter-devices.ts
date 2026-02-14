@@ -166,7 +166,7 @@ export class HaFilterDevices extends LitElement {
     if (!this.value?.length) {
       this.value = [];
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
       return;
@@ -189,7 +189,7 @@ export class HaFilterDevices extends LitElement {
     }
 
     fireEvent(this, "data-table-filter-changed", {
-      value,
+      value: value.length ? value : undefined,
       items: this.type ? items : undefined,
     });
   }

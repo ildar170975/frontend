@@ -116,7 +116,7 @@ export class HaFilterStates extends LitElement {
   private async _statesSelected(ev: CustomEvent<SelectedDetail<Set<number>>>) {
     if (!ev.detail.index.size) {
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
       this.value = [];
@@ -132,7 +132,7 @@ export class HaFilterStates extends LitElement {
     this.value = value;
 
     fireEvent(this, "data-table-filter-changed", {
-      value,
+      value: value.length ? value : undefined,
       items: undefined,
     });
   }

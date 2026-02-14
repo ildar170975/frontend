@@ -224,7 +224,7 @@ export class HaFilterFloorAreas extends LitElement {
     ) {
       this.value = {};
       fireEvent(this, "data-table-filter-changed", {
-        value: {},
+        value: undefined,
         items: undefined,
       });
       return;

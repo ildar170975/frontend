@@ -214,7 +214,7 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
     try {
       await deleteCategoryRegistryEntry(this.hass, this.scope!, id);
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
     } catch (err: any) {
@@ -244,7 +244,7 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
   private async _categorySelected(ev: CustomEvent<SelectedDetail<number>>) {
     if (!ev.detail.index) {
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
       this.value = [];

@@ -138,7 +138,7 @@ export class HaFilterDomains extends LitElement {
     listItem.selected = this.value.includes(value);
 
     fireEvent(this, "data-table-filter-changed", {
-      value: this.value,
+      value: this.value.length ? this.value : undefined,
       items: undefined,
     });
   }

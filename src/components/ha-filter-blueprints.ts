@@ -117,7 +117,7 @@ export class HaFilterBlueprints extends LitElement {
 
     if (!ev.detail.index.size) {
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
       this.value = [];
@@ -138,7 +138,7 @@ export class HaFilterBlueprints extends LitElement {
     if (!this.value?.length) {
       this.value = [];
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
       return;

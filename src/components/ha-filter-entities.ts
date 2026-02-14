@@ -184,7 +184,7 @@ export class HaFilterEntities extends LitElement {
     if (!this.value?.length) {
       this.value = [];
       fireEvent(this, "data-table-filter-changed", {
-        value: [],
+        value: undefined,
         items: undefined,
       });
       return;
