@@ -80,7 +80,7 @@ export class HuiGaugeCardEditor
   }
 
   private _schema = memoizeOne(
-    (showSeverity: boolean, entityId?: string) =>
+    (showSeverity: boolean) =>
       [
         {
           name: "entity",
@@ -94,10 +94,10 @@ export class HuiGaugeCardEditor
           name: "attribute",
           selector: {
             attribute: {
-              entity_id: entityId,
               hide_attributes: NON_NUMERIC_ATTRIBUTES,
             },
           },
+          context: { filter_entity: "entity" },
         },
         {
           name: "name",
@@ -197,10 +197,7 @@ export class HuiGaugeCardEditor
       return nothing;
     }
 
-    const schema = this._schema(
-      this._config!.severity !== undefined,
-      this._config!.entity
-    );
+    const schema = this._schema(this._config!.severity !== undefined);
     const data = {
       show_severity: this._config!.severity !== undefined,
       ...this._config,
